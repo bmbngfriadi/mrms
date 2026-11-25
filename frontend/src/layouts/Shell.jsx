@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Outlet, NavLink, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useI18n } from '../context/I18nContext';
+import { useModal } from '../context/ModalContext';
 import {
   Home,
   DoorOpen,
@@ -36,6 +37,7 @@ import cemindoLogo from '../assets/logo-cemindo.png';
 export default function Shell() {
   const { user, role, logout, theme, toggleTheme, isHRGA, isAdmin, hasPermission } = useAuth();
   const { lang, toggleLang, t } = useI18n();
+  const { showConfirm } = useModal();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [scanModalOpen, setScanModalOpen] = useState(false);
   const [deferredPrompt, setDeferredPrompt] = useState(null);
@@ -71,6 +73,14 @@ export default function Shell() {
   };
 
   const handleLogout = async () => {
+    const confirmed = await showConfirm({
+      title: t('Konfirmasi Keluar'),
+      message: t('Apakah Anda yakin ingin keluar dari sistem MRMS?'),
+      type: 'warning',
+      confirmText: t('Ya, Keluar'),
+      cancelText: t('Batal'),
+    });
+    if (!confirmed) return;
     await logout();
     navigate('/login');
   };

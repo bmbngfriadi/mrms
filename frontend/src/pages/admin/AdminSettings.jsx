@@ -51,6 +51,15 @@ export default function AdminSettings() {
 
   const handleSaveSettings = async (e) => {
     e.preventDefault();
+    const confirmed = await showConfirm({
+      title: t('Simpan Pengaturan Sistem'),
+      message: t('Perubahan pengaturan operasional (jam kerja, toleransi keterlambatan, dan mode notifikasi) akan langsung berlaku untuk seluruh pengguna. Lanjutkan?'),
+      type: 'warning',
+      confirmText: t('Ya, Simpan Pengaturan'),
+      cancelText: t('Batal'),
+    });
+    if (!confirmed) return;
+
     setSaving(true);
     setMessage('');
     setError('');

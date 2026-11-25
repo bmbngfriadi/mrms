@@ -2,12 +2,14 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams, Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useI18n } from '../context/I18nContext';
+import { useModal } from '../context/ModalContext';
 import api from '../services/api';
 import { PlusCircle, Calendar, Clock, Users, AlertCircle, CheckCircle2, ArrowLeft, Coffee, CupSoda, ListPlus } from 'lucide-react';
 
 export default function CreateBooking() {
   const { user } = useAuth();
   const { t } = useI18n();
+  const { showConfirm } = useModal();
   const [searchParams] = useSearchParams();
   const initialRoomId = searchParams.get('roomId') || '';
 
@@ -89,17 +91,28 @@ export default function CreateBooking() {
       return;
     }
 
+    const requirements = [];
+    if (needCoffee) requirements.push('Kopi');
+    if (needTea) requirements.push('Teh');
+    if (needOthers && othersText.trim()) {
+      requirements.push(othersText.trim());
+    } else if (needOthers) {
+      requirements.push('Lainnya');
+    }
+
+    const reqSummary = requirements.length > 0 ? `\n• Kebutuhan: ${requirements.join(', ')}` : '';
+    const confirmed = await showConfirm({
+      title: t('Konfirmasi Reservasi Ruangan'),
+      message: `${t('Apakah data reservasi berikut sudah benar?')}\n\n• Ruangan: ${selectedRoom?.name || '-'}\n• Agenda: ${title}\n• Jadwal: ${date} (${startTime} – ${endTime} WIB)\n• Peserta: ${attendeesCount} orang${reqSummary}`,
+      type: 'info',
+      confirmText: t('Ya, Konfirmasi Reservasi'),
+      cancelText: t('Periksa Kembali'),
+    });
+
+    if (!confirmed) return;
+
     setSubmitting(true);
     try {
-      const requirements = [];
-      if (needCoffee) requirements.push('Kopi');
-      if (needTea) requirements.push('Teh');
-      if (needOthers && othersText.trim()) {
-        requirements.push(othersText.trim());
-      } else if (needOthers) {
-        requirements.push('Lainnya');
-      }
-
       const res = await api.post('/bookings', {
         roomId,
         title,

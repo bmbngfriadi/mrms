@@ -107,7 +107,7 @@ export default function CustomModal({
 
         {/* Body Message */}
         {message && (
-          <div className="text-xs sm:text-sm text-slate-600 dark:text-slate-300 leading-relaxed pl-1">
+          <div className="text-xs sm:text-sm text-slate-600 dark:text-slate-300 leading-relaxed pl-1 whitespace-pre-line">
             {message}
           </div>
         )}

@@ -332,6 +332,17 @@ export default function AdminUsers() {
       return;
     }
 
+    const confirmed = await showConfirm({
+      title: 'Konfirmasi Bulk Import Pengguna',
+      message: cleanOldData
+        ? `Anda akan mengimpor file "${importFile.name}" dengan mode Sinkronisasi Master AKTIF.\n\nData pengguna lama yang ada di file akan ditimpa, dan akun non-admin yang tidak ada di file akan DIHAPUS/DINONAKTIFKAN. Lanjutkan?`
+        : `Anda akan mengimpor file "${importFile.name}". Data pengguna yang cocok akan diperbarui dan data baru akan ditambahkan. Lanjutkan?`,
+      type: cleanOldData ? 'danger' : 'warning',
+      confirmText: 'Ya, Mulai Import',
+      cancelText: 'Batal',
+    });
+    if (!confirmed) return;
+
     setImporting(true);
     setImportError('');
     setImportResult(null);

@@ -28,7 +28,7 @@ import { PERMISSION_GROUPS } from '../utils/permissions';
 export default function Profile() {
   const { user, updateUser, hasPermission } = useAuth();
   const { t } = useI18n();
-  const { showAlert } = useModal();
+  const { showAlert, showConfirm: showModalConfirm } = useModal();
 
   // Profile Edit State
   const [name, setName] = useState(user?.name || '');
@@ -150,6 +150,15 @@ export default function Profile() {
       setPasswordMessage({ type: 'danger', text: 'Konfirmasi password baru tidak cocok.' });
       return;
     }
+
+    const confirmed = await showModalConfirm({
+      title: 'Konfirmasi Ubah Kata Sandi',
+      message: 'Apakah Anda yakin ingin mengganti kata sandi akun Anda sekarang?',
+      type: 'warning',
+      confirmText: 'Ya, Ubah Kata Sandi',
+      cancelText: 'Batal',
+    });
+    if (!confirmed) return;
 
     setPasswordSaving(true);
 
