@@ -11,6 +11,7 @@ const createBookingSchema = z.object({
   title: z.string().min(3, 'Agenda meeting minimal 3 karakter'),
   meetingType: z.string().default('INTERNAL'),
   attendeesCount: z.number().int().positive('Jumlah peserta minimal 1 orang'),
+  requirements: z.array(z.string()).optional(),
   notes: z.string().optional().nullable(),
   startTime: z.string().datetime('Format tanggal/waktu mulai harus ISO valid'),
   endTime: z.string().datetime('Format tanggal/waktu selesai harus ISO valid'),

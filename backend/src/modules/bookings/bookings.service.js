@@ -175,9 +175,21 @@ class BookingService {
   /**
    * Create Booking with strict Concurrency Lock & Anti-Double-Booking Protection
    */
-  async createBooking({ roomId, userId, title, meetingType = 'INTERNAL', attendeesCount, notes, startTime, endTime }) {
+  async createBooking({ roomId, userId, title, meetingType = 'INTERNAL', attendeesCount, requirements = [], notes, startTime, endTime }) {
     const start = new Date(startTime);
     const end = new Date(endTime);
+
+    const cleanReqs = Array.isArray(requirements)
+      ? requirements.map((r) => String(r).trim()).filter(Boolean)
+      : [];
+    const reqText = cleanReqs.length > 0 ? cleanReqs.join(', ') : null;
+    const cleanNotes = notes ? String(notes).trim() : null;
+    const combinedNotes = [
+      reqText ? `[Kebutuhan: ${reqText}]` : null,
+      cleanNotes,
+    ]
+      .filter(Boolean)
+      .join(' • ') || null;
 
     // Initial business validation
     const room = await this.validateBookingRules({
@@ -211,7 +223,7 @@ class BookingService {
           title,
           meetingType,
           attendeesCount,
-          notes,
+          notes: combinedNotes,
           startTime: start,
           endTime: end,
           status: 'CONFIRMED',
@@ -255,6 +267,8 @@ class BookingService {
       bookerEmail: newBooking.user.email,
       bookerPhone: newBooking.user.phone,
       bookerName: newBooking.user.name,
+      requirements: reqText,
+      notes: cleanNotes,
     });
 
     return newBooking;

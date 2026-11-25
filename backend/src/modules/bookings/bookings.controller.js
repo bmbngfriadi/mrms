@@ -87,7 +87,7 @@ async function getBookingById(req, res, next) {
 
 async function createBooking(req, res, next) {
   try {
-    const { roomId, title, meetingType, attendeesCount, notes, startTime, endTime } = req.body;
+    const { roomId, title, meetingType, attendeesCount, requirements, notes, startTime, endTime } = req.body;
 
     const booking = await bookingService.createBooking({
       roomId,
@@ -95,6 +95,7 @@ async function createBooking(req, res, next) {
       title,
       meetingType,
       attendeesCount: parseInt(attendeesCount, 10),
+      requirements,
       notes,
       startTime,
       endTime,

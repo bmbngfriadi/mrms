@@ -125,6 +125,8 @@ class NotificationService {
       actualTime,
       reason,
       actorName,
+      requirements,
+      notes,
     } = payload;
 
     const startStr = formatWIB(startTime, 'dd MMM yyyy, HH:mm') + ' WIB';
@@ -193,6 +195,8 @@ class NotificationService {
       `*Jadwal:* ${startStr} s/d ${endStr}`,
       actualTime ? `*Waktu Aktual:* ${actualStr}` : null,
       actorName ? `*Petugas / Aktor:* ${actorName}` : null,
+      requirements ? `*Kebutuhan / Konsumsi:* ${requirements}` : null,
+      notes ? `*Catatan:* ${notes}` : null,
       reason ? `*Alasan / Catatan:* ${reason}` : null,
       DIVIDER,
       `_Pesan Otomatis, MRMS Plant Batam_`,
@@ -244,6 +248,20 @@ class NotificationService {
         ? `<tr>
                     <td style="padding: 8px 0; color: #64748b;">Petugas / PIC</td>
                     <td style="padding: 8px 0; color: #0f172a;">${actorName}</td>
+                  </tr>`
+        : ''
+      }
+            ${requirements
+        ? `<tr>
+                    <td style="padding: 8px 0; color: #64748b;">Kebutuhan / Konsumsi</td>
+                    <td style="padding: 8px 0; font-weight: bold; color: #0f172a;">${requirements}</td>
+                  </tr>`
+        : ''
+      }
+            ${notes
+        ? `<tr>
+                    <td style="padding: 8px 0; color: #64748b;">Catatan</td>
+                    <td style="padding: 8px 0; color: #475569;">${notes}</td>
                   </tr>`
         : ''
       }

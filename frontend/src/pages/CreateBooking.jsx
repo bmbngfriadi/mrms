@@ -3,7 +3,7 @@ import { useNavigate, useSearchParams, Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useI18n } from '../context/I18nContext';
 import api from '../services/api';
-import { PlusCircle, Calendar, Clock, Users, AlertCircle, CheckCircle2, ArrowLeft } from 'lucide-react';
+import { PlusCircle, Calendar, Clock, Users, AlertCircle, CheckCircle2, ArrowLeft, Coffee, CupSoda, ListPlus } from 'lucide-react';
 
 export default function CreateBooking() {
   const { user } = useAuth();
@@ -23,6 +23,10 @@ export default function CreateBooking() {
   const [endTime, setEndTime] = useState('10:00');
   const [attendeesCount, setAttendeesCount] = useState(4);
   const [notes, setNotes] = useState('');
+  const [needCoffee, setNeedCoffee] = useState(false);
+  const [needTea, setNeedTea] = useState(false);
+  const [needOthers, setNeedOthers] = useState(false);
+  const [othersText, setOthersText] = useState('');
 
   const [loadingRooms, setLoadingRooms] = useState(true);
   const [submitting, setSubmitting] = useState(false);
@@ -87,11 +91,21 @@ export default function CreateBooking() {
 
     setSubmitting(true);
     try {
+      const requirements = [];
+      if (needCoffee) requirements.push('Kopi');
+      if (needTea) requirements.push('Teh');
+      if (needOthers && othersText.trim()) {
+        requirements.push(othersText.trim());
+      } else if (needOthers) {
+        requirements.push('Lainnya');
+      }
+
       const res = await api.post('/bookings', {
         roomId,
         title,
         meetingType,
         attendeesCount: parseInt(attendeesCount, 10),
+        requirements,
         notes: notes.trim() || null,
         startTime: new Date(startIso).toISOString(),
         endTime: new Date(endIso).toISOString(),
@@ -260,6 +274,79 @@ export default function CreateBooking() {
               onChange={(e) => setAttendeesCount(e.target.value)}
             />
           </div>
+        </div>
+
+        {/* Kebutuhan / Konsumsi Checklist */}
+        <div className="space-y-2.5 pt-1">
+          <label className="label">{t('Kebutuhan Konsumsi & Tambahan (Opsional)')}</label>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+            {/* Kopi */}
+            <label
+              className={`flex items-center gap-3 p-3 rounded-xl border cursor-pointer transition-all min-h-[44px] select-none ${
+                needCoffee
+                  ? 'border-brand-500 bg-brand-50/40 dark:bg-brand-950/30 text-brand-700 dark:text-brand-300'
+                  : 'border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 hover:border-slate-300 dark:hover:border-slate-700'
+              }`}
+            >
+              <input
+                type="checkbox"
+                checked={needCoffee}
+                onChange={(e) => setNeedCoffee(e.target.checked)}
+                className="w-4 h-4 accent-[#b52025] rounded shrink-0 cursor-pointer"
+              />
+              <Coffee size={16} className="shrink-0 text-amber-700 dark:text-amber-400" />
+              <span className="text-xs font-bold">{t('Kopi')}</span>
+            </label>
+
+            {/* Teh */}
+            <label
+              className={`flex items-center gap-3 p-3 rounded-xl border cursor-pointer transition-all min-h-[44px] select-none ${
+                needTea
+                  ? 'border-brand-500 bg-brand-50/40 dark:bg-brand-950/30 text-brand-700 dark:text-brand-300'
+                  : 'border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 hover:border-slate-300 dark:hover:border-slate-700'
+              }`}
+            >
+              <input
+                type="checkbox"
+                checked={needTea}
+                onChange={(e) => setNeedTea(e.target.checked)}
+                className="w-4 h-4 accent-[#b52025] rounded shrink-0 cursor-pointer"
+              />
+              <CupSoda size={16} className="shrink-0 text-emerald-600 dark:text-emerald-400" />
+              <span className="text-xs font-bold">{t('Teh')}</span>
+            </label>
+
+            {/* Others */}
+            <label
+              className={`flex items-center gap-3 p-3 rounded-xl border cursor-pointer transition-all min-h-[44px] select-none ${
+                needOthers
+                  ? 'border-brand-500 bg-brand-50/40 dark:bg-brand-950/30 text-brand-700 dark:text-brand-300'
+                  : 'border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 hover:border-slate-300 dark:hover:border-slate-700'
+              }`}
+            >
+              <input
+                type="checkbox"
+                checked={needOthers}
+                onChange={(e) => setNeedOthers(e.target.checked)}
+                className="w-4 h-4 accent-[#b52025] rounded shrink-0 cursor-pointer"
+              />
+              <ListPlus size={16} className="shrink-0 text-brand-500" />
+              <span className="text-xs font-bold">{t('Others (Lainnya)')}</span>
+            </label>
+          </div>
+
+          {needOthers && (
+            <div className="pt-1">
+              <input
+                type="text"
+                required
+                className="input text-xs"
+                placeholder={t('Ketik kebutuhan lainnya (contoh: Air Mineral, Snack, Proyektor, Spidol...)')}
+                value={othersText}
+                onChange={(e) => setOthersText(e.target.value)}
+              />
+            </div>
+          )}
         </div>
 
         {/* Notes (Optional) */}
