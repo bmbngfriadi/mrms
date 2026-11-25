@@ -189,6 +189,11 @@ router.get('/template', requireRole(['ADMIN', 'HRGA']), async (req, res, next) =
 // Admin only: Bulk Import Users (Overwrite Mode, Admin Protected)
 router.post('/import', requireRole(['ADMIN']), async (req, res, next) => {
   try {
+    // 0. Ensure PostgreSQL unique constraint on NIK is dropped so batch uploads & transition NIKs succeed
+    try {
+      await prisma.$executeRawUnsafe(`DROP INDEX IF EXISTS "users_nik_key";`);
+    } catch (_) {}
+
     const { fileBase64, rows: directRows, cleanUnmatched = true } = req.body;
     let rawRows = [];
 
@@ -420,124 +425,137 @@ router.post('/import', requireRole(['ADMIN']), async (req, res, next) => {
         continue;
       }
 
-      // 9. Check if matching existing non-admin user (berdasarkan Username atau Email)
-      // NIK dan nomor telepon diizinkan sama antar karyawan saat testing/transisi
+      // 9. Check if matching existing non-admin user (berdasarkan Username, Email, atau NIK)
       const existingNonAdmin = existingUsers.find(
         (u) =>
           !adminUserIds.has(u.id) &&
           (
             (username && u.username && u.username.toLowerCase().trim() === username.toLowerCase().trim()) ||
-            (email && u.email && u.email.toLowerCase().trim() === email.toLowerCase().trim())
+            (email && u.email && u.email.toLowerCase().trim() === email.toLowerCase().trim()) ||
+            (nik && nik !== '-' && nik !== '04119120000' && u.nik && u.nik.toLowerCase().trim() === nik.toLowerCase().trim())
           )
       );
 
-      if (existingNonAdmin) {
-        // OVERWRITE / UPDATE existing non-admin user
-        const updateData = {
-          nik,
-          name,
-          username,
-          email,
-          phone,
-          departmentId: targetDept.id,
-          role,
-          isActive: true,
-        };
-        if (password) {
-          updateData.passwordHash = await hashPassword(password);
-        }
-
-        const updated = await prisma.user.update({
-          where: { id: existingNonAdmin.id },
-          data: updateData,
-          select: {
-            id: true,
-            nik: true,
-            username: true,
-            name: true,
-            email: true,
-            phone: true,
-            role: true,
-            department: { select: { code: true, name: true } },
-          },
-        });
-
-        touchedUserIds.add(updated.id);
-
-        // Update in-memory cache to prevent intra-file duplicate collision
-        const idx = existingUsers.findIndex((u) => u.id === updated.id);
-        if (idx >= 0) {
-          existingUsers[idx] = {
-            ...existingUsers[idx],
-            nik: updated.nik,
-            username: updated.username,
-            email: updated.email,
-            name: updated.name,
-            phone: updated.phone,
-            departmentId: targetDept.id,
-            role: updated.role,
-          };
-        }
-
-        overwritten.push({
-          row: i + 2,
-          id: updated.id,
-          nik: updated.nik,
-          username: updated.username,
-          name: updated.name,
-          email: updated.email,
-          department: updated.department?.name,
-          role: updated.role,
-        });
-      } else {
-        // INSERT / CREATE new user
-        const passwordHash = await hashPassword(password || 'Password123!');
-        const newUser = await prisma.user.create({
-          data: {
+      try {
+        if (existingNonAdmin) {
+          // OVERWRITE / UPDATE existing non-admin user
+          const updateData = {
             nik,
-            username,
             name,
+            username,
             email,
             phone,
-            passwordHash,
-            role,
             departmentId: targetDept.id,
+            role,
             isActive: true,
-          },
-          select: {
-            id: true,
-            nik: true,
-            username: true,
-            name: true,
-            email: true,
-            phone: true,
-            role: true,
-            department: { select: { code: true, name: true } },
-          },
-        });
+          };
+          if (password) {
+            updateData.passwordHash = await hashPassword(password);
+          }
 
-        touchedUserIds.add(newUser.id);
-        existingUsers.push({
-          id: newUser.id,
-          nik: newUser.nik,
-          username: newUser.username,
-          email: newUser.email,
-          name: newUser.name,
-          phone: newUser.phone,
-          departmentId: targetDept.id,
-          role: newUser.role,
-          isActive: true,
-        });
+          const updated = await prisma.user.update({
+            where: { id: existingNonAdmin.id },
+            data: updateData,
+            select: {
+              id: true,
+              nik: true,
+              username: true,
+              name: true,
+              email: true,
+              phone: true,
+              role: true,
+              department: { select: { code: true, name: true } },
+            },
+          });
 
-        imported.push({
+          touchedUserIds.add(updated.id);
+
+          // Update in-memory cache to prevent intra-file duplicate collision
+          const idx = existingUsers.findIndex((u) => u.id === updated.id);
+          if (idx >= 0) {
+            existingUsers[idx] = {
+              ...existingUsers[idx],
+              nik: updated.nik,
+              username: updated.username,
+              email: updated.email,
+              name: updated.name,
+              phone: updated.phone,
+              departmentId: targetDept.id,
+              role: updated.role,
+            };
+          }
+
+          overwritten.push({
+            row: i + 2,
+            id: updated.id,
+            nik: updated.nik,
+            username: updated.username,
+            name: updated.name,
+            email: updated.email,
+            department: updated.department?.name,
+            role: updated.role,
+          });
+        } else {
+          // INSERT / CREATE new user
+          const passwordHash = await hashPassword(password || 'Password123!');
+          const newUser = await prisma.user.create({
+            data: {
+              nik,
+              username,
+              name,
+              email,
+              phone,
+              passwordHash,
+              role,
+              departmentId: targetDept.id,
+              isActive: true,
+            },
+            select: {
+              id: true,
+              nik: true,
+              username: true,
+              name: true,
+              email: true,
+              phone: true,
+              role: true,
+              department: { select: { code: true, name: true } },
+            },
+          });
+
+          touchedUserIds.add(newUser.id);
+          existingUsers.push({
+            id: newUser.id,
+            nik: newUser.nik,
+            username: newUser.username,
+            email: newUser.email,
+            name: newUser.name,
+            phone: newUser.phone,
+            departmentId: targetDept.id,
+            role: newUser.role,
+            isActive: true,
+          });
+
+          imported.push({
+            row: i + 2,
+            id: newUser.id,
+            nik: newUser.nik,
+            username: newUser.username,
+            name: newUser.name,
+            email: newUser.email,
+            department: newUser.department?.name,
+            role: newUser.role,
+          });
+        }
+      } catch (rowErr) {
+        console.warn(`[Bulk Import] Error baris ${i + 2} (${name}):`, rowErr.message);
+        skipped.push({
           row: i + 2,
-          id: newUser.id,
-          nik: newUser.nik,
-          username: newUser.username,
-          name: newUser.name,
-          email: newUser.email,
-          department: newUser.department?.name,
-          role: newUser.role,
+          nik: nik || '-',
+          name: name || '-',
+          email: email || '-',
+          reason: rowErr.code === 'P2002'
+            ? `Data duplikat terdeteksi pada kolom: ${Array.isArray(rowErr.meta?.target) ? rowErr.meta.target.join(', ') : rowErr.meta?.target || 'unique'}`
+            : (rowErr.message || 'Gagal menyimpan baris pengguna.'),
         });
       }
     }

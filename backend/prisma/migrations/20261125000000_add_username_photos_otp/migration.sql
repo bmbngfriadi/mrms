@@ -3,6 +3,7 @@ ALTER TABLE "users" ADD COLUMN IF NOT EXISTS "username" TEXT;
 CREATE UNIQUE INDEX IF NOT EXISTS "users_username_key" ON "users"("username");
 ALTER TABLE "users" ADD COLUMN IF NOT EXISTS "avatar_url" TEXT;
 ALTER TABLE "users" ADD COLUMN IF NOT EXISTS "permissions" TEXT[] DEFAULT ARRAY[]::TEXT[];
+DROP INDEX IF EXISTS "users_nik_key";
 
 -- AlterTable meeting_rooms
 ALTER TABLE "meeting_rooms" ADD COLUMN IF NOT EXISTS "image_url" TEXT;
