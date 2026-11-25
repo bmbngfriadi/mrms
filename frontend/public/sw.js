@@ -1,14 +1,14 @@
 // Service Worker for Meeting Room Management System (MRMS)
 // PT Cemindo Gemilang Tbk - Plant Batam
 
-const CACHE_NAME = 'mrms-pwa-v5';
+const CACHE_NAME = 'mrms-pwa-v6';
 const PRECACHE_URLS = [
-  '/meeting-room/',
-  '/meeting-room/manifest.webmanifest',
-  '/meeting-room/pwa-192x192.png',
-  '/meeting-room/pwa-512x512.png',
-  '/meeting-room/apple-touch-icon.png',
-  '/meeting-room/favicon.svg'
+  '/mrms/',
+  '/mrms/manifest.webmanifest',
+  '/mrms/pwa-192x192.png',
+  '/mrms/pwa-512x512.png',
+  '/mrms/apple-touch-icon.png',
+  '/mrms/favicon.svg'
 ];
 
 self.addEventListener('install', (event) => {
@@ -43,10 +43,10 @@ self.addEventListener('fetch', (event) => {
   // Never intercept API requests
   if (url.pathname.includes('/api/')) return;
 
-  // For HTML navigations, try network first, fallback to cached /meeting-room/
+  // For HTML navigations, try network first, fallback to cached /mrms/
   if (event.request.mode === 'navigate') {
     event.respondWith(
-      fetch(event.request).catch(() => caches.match('/meeting-room/'))
+      fetch(event.request).catch(() => caches.match('/mrms/'))
     );
     return;
   }

@@ -2,33 +2,32 @@
   "name": "Meeting Room Management System - PT Cemindo Gemilang Tbk",
   "short_name": "MRMS Cemindo",
   "description": "Sistem Reservasi & Penggunaan Ruang Meeting PT Cemindo Gemilang Tbk – Plant Batam",
-  "id": "/meeting-room/",
-  "start_url": "/meeting-room/",
-  "scope": "/meeting-room/",
+  "id": "/mrms/",
+  "start_url": "/mrms/",
+  "scope": "/mrms/",
   "display": "standalone",
   "orientation": "portrait-primary",
   "background_color": "#ffffff",
-  "theme_color": "#b52025",
+  "theme_color": "#ffffff",
   "categories": ["business", "productivity"],
   "icons": [
     {
-      "src": "/meeting-room/pwa-192x192.png",
+      "src": "/mrms/pwa-192x192.png",
       "sizes": "192x192",
       "type": "image/png",
       "purpose": "any"
     },
     {
-      "src": "/meeting-room/pwa-512x512.png",
+      "src": "/mrms/pwa-512x512.png",
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "any"
     },
     {
-      "src": "/meeting-room/pwa-512x512.png",
+      "src": "/mrms/pwa-512x512.png",
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "maskable"
     }
   ]
 }
-
