@@ -4,7 +4,7 @@ import { useI18n } from '../context/I18nContext';
 import CemindoRhinoBadge from '../components/CemindoRhinoBadge';
 import CameraQRScanner, { extractCleanToken } from '../components/CameraQRScanner';
 import api from '../services/api';
-import { QrCode, CheckCircle2, AlertCircle, ArrowLeft, Camera, LogOut, ArrowRight, Calendar } from 'lucide-react';
+import { QrCode, CheckCircle2, AlertCircle, ArrowLeft, Camera, LogOut, ArrowRight, Calendar, DoorOpen, Clock, User } from 'lucide-react';
 
 export default function QRScanCheckin() {
   const { t } = useI18n();
@@ -14,12 +14,14 @@ export default function QRScanCheckin() {
 
   const [qrToken, setQrToken] = useState(initialCode);
   const [loading, setLoading] = useState(false);
+  const [confirming, setConfirming] = useState(false);
   const [error, setError] = useState('');
   const [errorDetails, setErrorDetails] = useState(null);
+  const [previewData, setPreviewData] = useState(null);
   const [result, setResult] = useState(null);
   const [showCamera, setShowCamera] = useState(false);
 
-  const handleProcessCheckin = async (tokenToUse) => {
+  const handlePreviewCheckin = async (tokenToUse) => {
     const raw = tokenToUse !== undefined ? tokenToUse : qrToken;
     const token = extractCleanToken(raw);
     if (!token) {
@@ -31,12 +33,18 @@ export default function QRScanCheckin() {
     setError('');
     setErrorDetails(null);
     setLoading(true);
+    setPreviewData(null);
     setResult(null);
 
     try {
-      const res = await api.post('/room-usage/checkin', { qrToken: token });
-      setResult(res.data.data);
+      const res = await api.post('/room-usage/checkin/preview', { qrToken: token });
+      const data = res.data.data;
       setShowCamera(false);
+      if (data?.alreadyCheckedIn) {
+        setResult(data);
+      } else {
+        setPreviewData({ ...data, qrToken: token });
+      }
     } catch (err) {
       const errData = err.response?.data?.errors || err.response?.data || {};
       const errMsg = err.response?.data?.message || t('Check-in ditolak. Pastikan jadwal meeting sesuai dan belum melewati toleransi 15 menit.');
@@ -47,9 +55,34 @@ export default function QRScanCheckin() {
     }
   };
 
+  const handleConfirmCheckin = async () => {
+    if (!previewData?.qrToken) return;
+
+    setError('');
+    setErrorDetails(null);
+    setConfirming(true);
+
+    try {
+      const res = await api.post('/room-usage/checkin', {
+        qrToken: previewData.qrToken,
+        bookingId: previewData.booking?.id,
+      });
+      setResult(res.data.data);
+      setPreviewData(null);
+    } catch (err) {
+      const errData = err.response?.data?.errors || err.response?.data || {};
+      const errMsg = err.response?.data?.message || t('Check-in ditolak. Pastikan jadwal meeting sesuai dan belum melewati toleransi 15 menit.');
+      setError(errMsg);
+      setErrorDetails(errData);
+      setPreviewData(null);
+    } finally {
+      setConfirming(false);
+    }
+  };
+
   useEffect(() => {
     if (initialCode) {
-      handleProcessCheckin(initialCode);
+      handlePreviewCheckin(initialCode);
     }
   }, [initialCode]);
 
@@ -57,7 +90,7 @@ export default function QRScanCheckin() {
     const clean = extractCleanToken(token);
     setQrToken(clean);
     setShowCamera(false);
-    handleProcessCheckin(clean);
+    handlePreviewCheckin(clean);
   };
 
   return (
@@ -133,6 +166,87 @@ export default function QRScanCheckin() {
             <Link to={`/bookings/${result.booking?.id}`} className="btn btn-primary flex-1 text-xs">
               {t('Detail Reservasi')}
             </Link>
+          </div>
+        </div>
+      ) : previewData ? (
+        <div className="card p-6 border-emerald-500/60 shadow-md space-y-5 animate-in zoom-in-95">
+          <div className="text-center space-y-2">
+            <div className="w-14 h-14 rounded-2xl bg-emerald-50 dark:bg-emerald-950/50 text-emerald-600 border border-emerald-200 dark:border-emerald-800 flex items-center justify-center mx-auto">
+              <DoorOpen size={28} />
+            </div>
+            <h2 className="text-lg font-black text-slate-800 dark:text-white">
+              {t('Konfirmasi Check-In Ruangan')}
+            </h2>
+            <p className="text-xs text-slate-500">
+              {t('Pastikan detail reservasi di bawah ini sudah sesuai sebelum melakukan check-in.')}
+            </p>
+          </div>
+
+          <div className="p-4 bg-slate-50 dark:bg-slate-800/60 rounded-xl border border-slate-200 dark:border-slate-700 space-y-2.5 text-xs">
+            <div className="flex items-start justify-between gap-3">
+              <span className="text-slate-500 shrink-0">{t('Ruangan')}:</span>
+              <strong className="text-slate-800 dark:text-white text-right">
+                {previewData.room?.name} ({previewData.room?.location})
+              </strong>
+            </div>
+            <div className="flex items-start justify-between gap-3">
+              <span className="text-slate-500 shrink-0">{t('Kode Reservasi')}:</span>
+              <strong className="font-mono text-brand-600 dark:text-brand-400 text-right">
+                {previewData.booking?.bookingCode}
+              </strong>
+            </div>
+            <div className="flex items-start justify-between gap-3">
+              <span className="text-slate-500 shrink-0">{t('Agenda')}:</span>
+              <strong className="text-slate-800 dark:text-white text-right">
+                {previewData.booking?.title}
+              </strong>
+            </div>
+            <div className="flex items-start justify-between gap-3">
+              <span className="text-slate-500 shrink-0">{t('Pemesan')}:</span>
+              <span className="font-semibold text-slate-700 dark:text-slate-200 text-right flex items-center gap-1">
+                <User size={13} className="text-slate-400" />
+                {previewData.booking?.user?.name}
+              </span>
+            </div>
+            <div className="flex items-start justify-between gap-3">
+              <span className="text-slate-500 shrink-0">{t('Jadwal')}:</span>
+              <span className="font-bold text-slate-800 dark:text-white text-right flex items-center gap-1">
+                <Clock size={13} className="text-emerald-600" />
+                {new Date(previewData.booking?.startTime).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })} –{' '}
+                {new Date(previewData.booking?.endTime).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })} WIB
+              </span>
+            </div>
+            {previewData.booking?.notes && (
+              <div className="pt-2 border-t border-slate-200 dark:border-slate-700 text-[11px] text-slate-600 dark:text-slate-300">
+                <span className="font-bold text-slate-500 block mb-0.5">{t('Catatan / Kebutuhan')}:</span>
+                {previewData.booking.notes}
+              </div>
+            )}
+          </div>
+
+          <div className="space-y-2.5">
+            <button
+              type="button"
+              onClick={handleConfirmCheckin}
+              disabled={confirming}
+              className="w-full btn bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-black py-3 shadow-sm"
+            >
+              <CheckCircle2 size={18} />
+              <span>{confirming ? t('Memproses Check-In...') : t('Konfirmasi Check-In Sekarang')}</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => {
+                setPreviewData(null);
+                setQrToken('');
+                navigate('/scan/checkin', { replace: true });
+              }}
+              disabled={confirming}
+              className="w-full btn btn-ghost text-xs"
+            >
+              {t('Batal / Scan QR Lain')}
+            </button>
           </div>
         </div>
       ) : (
@@ -212,7 +326,7 @@ export default function QRScanCheckin() {
           <form
             onSubmit={(e) => {
               e.preventDefault();
-              handleProcessCheckin();
+              handlePreviewCheckin();
             }}
             className="space-y-3"
           >

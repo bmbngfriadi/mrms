@@ -6,9 +6,9 @@ const notificationService = require('../notifications/notification.service');
 
 class RoomUsageService {
   /**
-   * Process QR Check-in
+   * Validate QR token and booking eligibility before check-in
    */
-  async checkin({ qrToken, bookingId, userId, userRole, req }) {
+  async validateCheckin({ qrToken, bookingId, userId, userRole, mutateLateStatus = true }) {
     if (!qrToken) {
       throw { statusCode: 400, message: 'QR Token wajib disertakan.' };
     }
@@ -191,8 +191,8 @@ class RoomUsageService {
     const lateCutoff = new Date(scheduledStart.getTime() + (lateToleranceMinutes * 60 + 59) * 1000);
 
     if (now > lateCutoff) {
-      // Late: Mark booking as NO_SHOW_PENDING if not already
-      if (booking.status !== 'NO_SHOW_PENDING') {
+      // Late: Mark booking as NO_SHOW_PENDING if not already (only when mutating)
+      if (mutateLateStatus && booking.status !== 'NO_SHOW_PENDING') {
         await prisma.booking.update({
           where: { id: booking.id },
           data: { status: 'NO_SHOW_PENDING' },
@@ -222,6 +222,56 @@ class RoomUsageService {
         message: 'Check-in belum dapat dilakukan. Pintu ruangan dibuka maksimal 30 menit sebelum jadwal mulai.',
       };
     }
+
+    return { room, booking, now, isIdempotent: false };
+  }
+
+  /**
+   * Preview Check-in details without changing status or sending notifications
+   */
+  async previewCheckin({ qrToken, bookingId, userId, userRole }) {
+    const validated = await this.validateCheckin({
+      qrToken,
+      bookingId,
+      userId,
+      userRole,
+      mutateLateStatus: false,
+    });
+
+    if (validated.isIdempotent) {
+      return {
+        room: validated.room,
+        booking: validated.booking,
+        session: validated.session,
+        alreadyCheckedIn: true,
+        message: validated.message,
+      };
+    }
+
+    return {
+      room: validated.room,
+      booking: validated.booking,
+      alreadyCheckedIn: false,
+    };
+  }
+
+  /**
+   * Process QR Check-in (Confirm & persist + send WhatsApp/Email notifications)
+   */
+  async checkin({ qrToken, bookingId, userId, userRole, req }) {
+    const validated = await this.validateCheckin({
+      qrToken,
+      bookingId,
+      userId,
+      userRole,
+      mutateLateStatus: true,
+    });
+
+    if (validated.isIdempotent) {
+      return validated;
+    }
+
+    const { room, booking, now } = validated;
 
     // 4. Perform check-in in transaction
     const result = await prisma.$transaction(async (tx) => {

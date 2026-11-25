@@ -24,6 +24,7 @@ const manualCheckoutSchema = z.object({
 
 router.use(authenticate);
 
+router.post('/checkin/preview', validateBody(checkinSchema), controller.handleCheckinPreview);
 router.post('/checkin', validateBody(checkinSchema), controller.handleCheckin);
 router.post('/checkout', validateBody(checkoutSchema), controller.handleCheckout);
 

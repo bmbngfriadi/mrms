@@ -3,6 +3,22 @@ const roomUsageService = require('./room-usage.service');
 const { successResponse, errorResponse } = require('../../utils/response');
 const { logAudit } = require('../../utils/audit');
 
+async function handleCheckinPreview(req, res, next) {
+  try {
+    const { qrToken, bookingId } = req.body;
+    const result = await roomUsageService.previewCheckin({
+      qrToken,
+      bookingId,
+      userId: req.user.id,
+      userRole: req.user.role,
+    });
+
+    return successResponse(res, result, 'Data reservasi siap untuk konfirmasi check-in.');
+  } catch (err) {
+    next(err);
+  }
+}
+
 async function handleCheckin(req, res, next) {
   try {
     const { qrToken, bookingId } = req.body;
@@ -137,6 +153,7 @@ async function getOverdueSessions(req, res, next) {
 }
 
 module.exports = {
+  handleCheckinPreview,
   handleCheckin,
   handleCheckout,
   handleManualCheckout,
