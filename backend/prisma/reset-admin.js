@@ -14,8 +14,8 @@ async function resetAdmin() {
   const defaultPassword = process.env.ADMIN_DEFAULT_PASSWORD || 'Password123!';
   const hash = await bcrypt.hash(defaultPassword, 10);
 
-  // 1. Check if an admin user already exists by email, username, or role
-  let user = await prisma.user.findFirst({
+  // 1. Find all existing admin users by email, username, or role
+  const adminUsers = await prisma.user.findMany({
     where: {
       OR: [
         { email: 'admin@cemindogemilang.com' },
@@ -26,22 +26,25 @@ async function resetAdmin() {
     },
   });
 
-  if (user) {
-    user = await prisma.user.update({
-      where: { id: user.id },
-      data: {
-        username: user.username || 'admin',
-        passwordHash: hash,
-        isActive: true,
-        role: 'ADMIN',
-      },
-    });
+  if (adminUsers.length > 0) {
     console.log('\n========================================');
     console.log('✅ AKUN ADMIN BERHASIL DIRESET!');
     console.log('========================================');
-    console.log(`Email   : ${user.email}`);
-    console.log(`Username: ${user.username || 'admin'}`);
-    console.log(`Password: ${defaultPassword}`);
+    for (const u of adminUsers) {
+      const updated = await prisma.user.update({
+        where: { id: u.id },
+        data: {
+          username: u.username || 'admin',
+          passwordHash: hash,
+          isActive: true,
+          role: 'ADMIN',
+        },
+      });
+      console.log(`Email   : ${updated.email}`);
+      console.log(`Username: ${updated.username || '-'}`);
+      console.log(`Password: ${defaultPassword}`);
+      console.log('----------------------------------------');
+    }
     console.log('========================================\n');
     process.exit(0);
   }
