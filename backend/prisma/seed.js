@@ -176,19 +176,28 @@ async function main() {
   ];
 
   for (const u of usersData) {
-    users[u.email] = await prisma.user.upsert({
-      where: { email: u.email },
-      update: {
-        passwordHash,
-        isActive: true,
-        role: u.role,
-        departmentId: u.departmentId,
-      },
-      create: {
-        ...u,
-        passwordHash,
-      },
-    });
+    try {
+      const existing = await prisma.user.findFirst({
+        where: {
+          OR: [
+            { email: u.email },
+            ...(u.username ? [{ username: u.username }] : []),
+          ],
+        },
+      });
+      if (existing) {
+        users[u.email] = existing;
+      } else {
+        users[u.email] = await prisma.user.create({
+          data: {
+            ...u,
+            passwordHash,
+          },
+        });
+      }
+    } catch (err) {
+      console.warn(`[Seed] Skip user ${u.email}:`, err.message);
+    }
   }
 
   // 4. Meeting Rooms & Facilities (Preserve existing rooms and photo additions)
