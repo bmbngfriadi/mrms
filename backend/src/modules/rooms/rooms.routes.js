@@ -21,7 +21,7 @@ const roomSchema = z.object({
   facilities: z
     .array(
       z.object({
-        name: z.string().min(2),
+        name: z.string().min(1),
         quantity: z.number().int().positive().default(1),
         condition: z.string().default('GOOD'),
       })

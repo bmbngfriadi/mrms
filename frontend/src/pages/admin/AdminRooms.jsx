@@ -34,7 +34,7 @@ const processImageFile = (file) => {
         const canvas = document.createElement('canvas');
         let width = img.width;
         let height = img.height;
-        const maxDimension = 1600; // 1600px max width/height for crisp display
+        const maxDimension = 1200; // 1200px max width/height for crisp display & compact upload size
 
         if (width > maxDimension || height > maxDimension) {
           if (width > height) {
@@ -51,8 +51,8 @@ const processImageFile = (file) => {
         const ctx = canvas.getContext('2d');
         ctx.drawImage(img, 0, 0, width, height);
 
-        // Convert to web-optimized JPEG
-        const dataUrl = canvas.toDataURL('image/jpeg', 0.85);
+        // Convert to web-optimized JPEG (~80-120KB per photo)
+        const dataUrl = canvas.toDataURL('image/jpeg', 0.72);
         resolve(dataUrl);
       };
       img.onerror = () => reject(new Error('Gagal memproses file gambar.'));
@@ -272,7 +272,11 @@ export default function AdminRooms() {
         type: 'success',
       });
     } catch (err) {
-      setError(err.response?.data?.message || t('Gagal menyimpan ruangan.'));
+      if (err.response?.status === 413) {
+        setError(t('Ukuran total foto terlalu besar untuk dikirim ke server. Silakan kurangi jumlah foto atau unggah ulang foto agar terkompresi otomatis.'));
+      } else {
+        setError(err.response?.data?.message || t('Gagal menyimpan ruangan.'));
+      }
     } finally {
       setSubmitting(false);
     }
