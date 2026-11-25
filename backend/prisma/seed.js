@@ -46,7 +46,7 @@ async function main() {
   for (const s of settings) {
     await prisma.systemSetting.upsert({
       where: { key: s.key },
-      update: { value: s.value, description: s.description },
+      update: {},
       create: s,
     });
   }
@@ -104,99 +104,109 @@ async function main() {
     return Object.values(depts)[0]?.id;
   };
 
-  // 3. Users (Ensure default users and admin always exist with valid credentials)
-  const defaultPassword = 'Password123!';
-  const passwordHash = await bcrypt.hash(defaultPassword, 10);
+  // 3. Users (Strictly preserve ALL existing user accounts, passwords, and updates)
+  const existingUsersCount = await prisma.user.count();
   const users = {};
 
-  const usersData = [
-    {
-      nik: 'CG-ADM-001',
-      username: 'admin',
-      name: 'Bambang Friadi (Admin)',
-      email: 'admin@cemindogemilang.com',
-      phone: '081270001001',
-      role: 'ADMIN',
-      departmentId: getDeptId('IT'),
-    },
-    {
-      nik: 'CG-HRGA-001',
-      username: 'hrga',
-      name: 'Rina Sugiarto (HRGA Lead)',
-      email: 'hrga@cemindogemilang.com',
-      phone: '081270002002',
-      role: 'HRGA',
-      departmentId: getDeptId('HRGA'),
-    },
-    {
-      nik: 'CG-PRD-010',
-      username: 'budi',
-      name: 'Budi Santoso',
-      email: 'budi.santoso@cemindogemilang.com',
-      phone: '081270003003',
-      role: 'EMPLOYEE',
-      departmentId: getDeptId('PRD'),
-    },
-    {
-      nik: 'CG-ENG-022',
-      username: 'siti',
-      name: 'Siti Aminah',
-      email: 'siti.aminah@cemindogemilang.com',
-      phone: '081270004004',
-      role: 'EMPLOYEE',
-      departmentId: getDeptId('ENG'),
-    },
-    {
-      nik: 'CG-LOG-035',
-      username: 'hendra',
-      name: 'Hendra Wijaya',
-      email: 'hendra.wijaya@cemindogemilang.com',
-      phone: '081270005005',
-      role: 'EMPLOYEE',
-      departmentId: getDeptId('LOG'),
-    },
-    {
-      nik: 'CG-IT-044',
-      username: 'dewi.lestari',
-      name: 'Dewi Lestari',
-      email: 'dewi.lestari@cemindogemilang.com',
-      phone: '081270006006',
-      role: 'EMPLOYEE',
-      departmentId: getDeptId('IT'),
-    },
-    {
-      nik: 'CG-FIN-051',
-      username: 'ahmad.fauzi',
-      name: 'Ahmad Fauzi',
-      email: 'ahmad.fauzi@cemindogemilang.com',
-      phone: '081270007007',
-      role: 'EMPLOYEE',
-      departmentId: getDeptId('FIN'),
-    },
-  ];
+  if (existingUsersCount > 0) {
+    console.log(`[Seed] Found ${existingUsersCount} existing users in database. Preserving all user accounts & passwords, skipping user seed.`);
+    const existing = await prisma.user.findMany();
+    for (const u of existing) {
+      users[u.email] = u;
+    }
+  } else {
+    const defaultPassword = 'Password123!';
+    const passwordHash = await bcrypt.hash(defaultPassword, 10);
 
-  for (const u of usersData) {
-    try {
-      const existing = await prisma.user.findFirst({
-        where: {
-          OR: [
-            { email: u.email },
-            ...(u.username ? [{ username: u.username }] : []),
-          ],
-        },
-      });
-      if (existing) {
-        users[u.email] = existing;
-      } else {
-        users[u.email] = await prisma.user.create({
-          data: {
-            ...u,
-            passwordHash,
+    const usersData = [
+      {
+        nik: 'CG-ADM-001',
+        username: 'admin',
+        name: 'Bambang Friadi (Admin)',
+        email: 'admin@cemindogemilang.com',
+        phone: '081270001001',
+        role: 'ADMIN',
+        departmentId: getDeptId('IT'),
+      },
+      {
+        nik: 'CG-HRGA-001',
+        username: 'hrga',
+        name: 'Rina Sugiarto (HRGA Lead)',
+        email: 'hrga@cemindogemilang.com',
+        phone: '081270002002',
+        role: 'HRGA',
+        departmentId: getDeptId('HRGA'),
+      },
+      {
+        nik: 'CG-PRD-010',
+        username: 'budi',
+        name: 'Budi Santoso',
+        email: 'budi.santoso@cemindogemilang.com',
+        phone: '081270003003',
+        role: 'EMPLOYEE',
+        departmentId: getDeptId('PRD'),
+      },
+      {
+        nik: 'CG-ENG-022',
+        username: 'siti',
+        name: 'Siti Aminah',
+        email: 'siti.aminah@cemindogemilang.com',
+        phone: '081270004004',
+        role: 'EMPLOYEE',
+        departmentId: getDeptId('ENG'),
+      },
+      {
+        nik: 'CG-LOG-035',
+        username: 'hendra',
+        name: 'Hendra Wijaya',
+        email: 'hendra.wijaya@cemindogemilang.com',
+        phone: '081270005005',
+        role: 'EMPLOYEE',
+        departmentId: getDeptId('LOG'),
+      },
+      {
+        nik: 'CG-IT-044',
+        username: 'dewi.lestari',
+        name: 'Dewi Lestari',
+        email: 'dewi.lestari@cemindogemilang.com',
+        phone: '081270006006',
+        role: 'EMPLOYEE',
+        departmentId: getDeptId('IT'),
+      },
+      {
+        nik: 'CG-FIN-051',
+        username: 'ahmad.fauzi',
+        name: 'Ahmad Fauzi',
+        email: 'ahmad.fauzi@cemindogemilang.com',
+        phone: '081270007007',
+        role: 'EMPLOYEE',
+        departmentId: getDeptId('FIN'),
+      },
+    ];
+
+    for (const u of usersData) {
+      try {
+        const existing = await prisma.user.findFirst({
+          where: {
+            OR: [
+              { email: u.email },
+              ...(u.username ? [{ username: u.username }] : []),
+            ],
           },
         });
+        if (existing) {
+          users[u.email] = existing;
+        } else {
+          users[u.email] = await prisma.user.create({
+            data: {
+              ...u,
+              passwordHash,
+            },
+          });
+        }
+      } catch (err) {
+        console.warn(`[Seed] Skip user ${u.email}:`, err.message);
       }
-    } catch (err) {
-      console.warn(`[Seed] Skip user ${u.email}:`, err.message);
     }
   }
 
