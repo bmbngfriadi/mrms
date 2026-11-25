@@ -15,6 +15,18 @@ function generateRandomToken(prefix) {
 async function main() {
   console.log('Seeding Meeting Room Management System PT Cemindo Gemilang Tbk - Plant Batam...');
 
+  // Self-healing schema check: ensure all optional columns exist in PostgreSQL
+  try {
+    await prisma.$executeRawUnsafe(`ALTER TABLE "meeting_rooms" ADD COLUMN IF NOT EXISTS "image_url" TEXT;`);
+    await prisma.$executeRawUnsafe(`ALTER TABLE "meeting_rooms" ADD COLUMN IF NOT EXISTS "photos" TEXT[] DEFAULT ARRAY[]::TEXT[];`);
+    await prisma.$executeRawUnsafe(`ALTER TABLE "users" ADD COLUMN IF NOT EXISTS "username" TEXT;`);
+    await prisma.$executeRawUnsafe(`CREATE UNIQUE INDEX IF NOT EXISTS "users_username_key" ON "users"("username");`);
+    await prisma.$executeRawUnsafe(`ALTER TABLE "users" ADD COLUMN IF NOT EXISTS "avatar_url" TEXT;`);
+    await prisma.$executeRawUnsafe(`ALTER TABLE "users" ADD COLUMN IF NOT EXISTS "permissions" TEXT[] DEFAULT ARRAY[]::TEXT[];`);
+  } catch (err) {
+    console.warn('[Seed Schema Guard] Warning during schema check:', err.message);
+  }
+
   // 1. System Settings
   const settings = [
     { key: 'OPERATIONAL_HOURS_START', value: '08:00', description: 'Jam mulai operasional ruang meeting (WIB)' },
