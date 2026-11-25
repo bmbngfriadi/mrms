@@ -1,0 +1,453 @@
+{
+  "capturedAt": "2026-11-16T09:38:26.296Z",
+  "departmentsCount": 10,
+  "usersCount": 28,
+  "departments": [
+    {
+      "id": "0b21bfc8-b2bd-44f0-87fb-5617dc840512",
+      "code": "FINANCE & ACCOUNTING",
+      "name": "Finance & Accounting",
+      "isActive": true,
+      "createdAt": "2026-11-13T07:19:55.544Z",
+      "updatedAt": "2026-11-16T04:41:04.081Z"
+    },
+    {
+      "id": "d03f34cb-bc82-4a17-8a72-63443e06cbae",
+      "code": "HRGA & SUPPORTING",
+      "name": "HRGA & Supporting",
+      "isActive": true,
+      "createdAt": "2026-11-13T07:19:55.538Z",
+      "updatedAt": "2026-11-16T04:40:39.828Z"
+    },
+    {
+      "id": "cd7d3937-5359-414c-8c48-5d826d2c3818",
+      "code": "IT",
+      "name": "Information Technology & Automation",
+      "isActive": true,
+      "createdAt": "2026-11-13T07:19:55.542Z",
+      "updatedAt": "2026-11-16T09:28:44.962Z"
+    },
+    {
+      "id": "641df9ab-cf8f-4a13-8537-e4827ffd7c57",
+      "code": "MAINTENANCE",
+      "name": "Maintenance",
+      "isActive": true,
+      "createdAt": "2026-11-13T07:19:55.540Z",
+      "updatedAt": "2026-11-16T04:43:27.071Z"
+    },
+    {
+      "id": "c77647cb-32a2-4372-82c1-bb8c514596ef",
+      "code": "PORT & DISPATCH",
+      "name": "Port & Dispatch",
+      "isActive": true,
+      "createdAt": "2026-11-13T07:19:55.528Z",
+      "updatedAt": "2026-11-16T04:43:00.068Z"
+    },
+    {
+      "id": "3efb076a-8cd6-4a6d-aa72-eff2ed65dca8",
+      "code": "PRODUCTION",
+      "name": "Production",
+      "isActive": true,
+      "createdAt": "2026-11-13T07:19:55.533Z",
+      "updatedAt": "2026-11-16T04:43:37.863Z"
+    },
+    {
+      "id": "f37e937f-fdc2-4558-97f4-e319a742fa2e",
+      "code": "PURCHASING",
+      "name": "Purchasing",
+      "isActive": true,
+      "createdAt": "2026-11-16T07:03:01.048Z",
+      "updatedAt": "2026-11-16T07:03:01.048Z"
+    },
+    {
+      "id": "889329b8-d26d-4806-90b2-c645ea4efa38",
+      "code": "QUALITY",
+      "name": "Quality Control",
+      "isActive": true,
+      "createdAt": "2026-11-16T07:02:22.287Z",
+      "updatedAt": "2026-11-16T07:02:22.287Z"
+    },
+    {
+      "id": "76752a08-f46c-4618-b1d3-b28b2e2488c8",
+      "code": "SHE",
+      "name": "Safety, Health & Environment",
+      "isActive": true,
+      "createdAt": "2026-11-16T07:02:32.656Z",
+      "updatedAt": "2026-11-16T09:28:44.999Z"
+    },
+    {
+      "id": "125770a2-e69f-451d-9c94-1f09e21bd73f",
+      "code": "WAREHOUSE",
+      "name": "Warehouse",
+      "isActive": true,
+      "createdAt": "2026-11-16T07:02:49.585Z",
+      "updatedAt": "2026-11-16T07:02:49.585Z"
+    }
+  ],
+  "users": [
+    {
+      "nik": "04119120012",
+      "name": "Administrator",
+      "username": "admin",
+      "email": "bambang.friadi@cemindo.com",
+      "phone": "081363331467",
+      "role": "ADMIN",
+      "isActive": true,
+      "department": {
+        "code": "IT",
+        "name": "Information Technology & Automation"
+      }
+    },
+    {
+      "nik": "04119120000",
+      "name": "Yanti Natasari",
+      "username": "yanti.natasari",
+      "email": "yanti.natasari@mrms.com",
+      "phone": "081363331467",
+      "role": "EMPLOYEE",
+      "isActive": true,
+      "department": {
+        "code": "FINANCE & ACCOUNTING",
+        "name": "Finance & Accounting"
+      }
+    },
+    {
+      "nik": "04119120000",
+      "name": "Agus Jatmiko Utomo",
+      "username": "agus.jatmiko",
+      "email": "agus.jatmiko@mrms.com",
+      "phone": "081363331467",
+      "role": "EMPLOYEE",
+      "isActive": true,
+      "department": {
+        "code": "FINANCE & ACCOUNTING",
+        "name": "Finance & Accounting"
+      }
+    },
+    {
+      "nik": "04119120000",
+      "name": "Rusdin",
+      "username": "rusdin.rusdin",
+      "email": "rusdin.rusdin@mrms.com",
+      "phone": "081363331467",
+      "role": "EMPLOYEE",
+      "isActive": true,
+      "department": {
+        "code": "FINANCE & ACCOUNTING",
+        "name": "Finance & Accounting"
+      }
+    },
+    {
+      "nik": "04119120000",
+      "name": "Syamsuri",
+      "username": "syam.suri",
+      "email": "syam.suri@mrms.com",
+      "phone": "081363331467",
+      "role": "HRGA",
+      "isActive": true,
+      "department": {
+        "code": "HRGA & SUPPORTING",
+        "name": "HRGA & Supporting"
+      }
+    },
+    {
+      "nik": "04119120000",
+      "name": "Bernardus Fernando Saputra",
+      "username": "bernardus.saputra",
+      "email": "bernardus.saputra@mrms.com",
+      "phone": "081363331467",
+      "role": "HRGA",
+      "isActive": true,
+      "department": {
+        "code": "HRGA & SUPPORTING",
+        "name": "HRGA & Supporting"
+      }
+    },
+    {
+      "nik": "04119120000",
+      "name": "Ramil Siregar",
+      "username": "ramil.siregar",
+      "email": "ramil.siregar@mrms.com",
+      "phone": "081363331467",
+      "role": "HRGA",
+      "isActive": true,
+      "department": {
+        "code": "HRGA & SUPPORTING",
+        "name": "HRGA & Supporting"
+      }
+    },
+    {
+      "nik": "04119120000",
+      "name": "M. Ismansyah Putra",
+      "username": "ismansyah.putra",
+      "email": "ismansyah.putra@mrms.com",
+      "phone": "081363331467",
+      "role": "HRGA",
+      "isActive": true,
+      "department": {
+        "code": "HRGA & SUPPORTING",
+        "name": "HRGA & Supporting"
+      }
+    },
+    {
+      "nik": "04119120000",
+      "name": "Mario Putra",
+      "username": "mario.putra",
+      "email": "mario.putra@mrms.com",
+      "phone": "081363331467",
+      "role": "EMPLOYEE",
+      "isActive": true,
+      "department": {
+        "code": "PURCHASING",
+        "name": "Purchasing"
+      }
+    },
+    {
+      "nik": "04119120000",
+      "name": "Hamidun",
+      "username": "hamidun.atan",
+      "email": "hamidun.atan@mrms.com",
+      "phone": "081363331467",
+      "role": "EMPLOYEE",
+      "isActive": true,
+      "department": {
+        "code": "PURCHASING",
+        "name": "Purchasing"
+      }
+    },
+    {
+      "nik": "04119120000",
+      "name": "Abdul Rajab",
+      "username": "abdul.rajab",
+      "email": "abdul.rajab@mrms.com",
+      "phone": "081363331467",
+      "role": "EMPLOYEE",
+      "isActive": true,
+      "department": {
+        "code": "PRODUCTION",
+        "name": "Production"
+      }
+    },
+    {
+      "nik": "04119120000",
+      "name": "Rio Eka Saputra",
+      "username": "rio.ekas",
+      "email": "rio.ekas@mrms.com",
+      "phone": "081363331467",
+      "role": "EMPLOYEE",
+      "isActive": true,
+      "department": {
+        "code": "PRODUCTION",
+        "name": "Production"
+      }
+    },
+    {
+      "nik": "04119120000",
+      "name": "Dehwan Setyo",
+      "username": "dehwan.setyo",
+      "email": "dehwan.setyo@mrms.com",
+      "phone": "081363331467",
+      "role": "EMPLOYEE",
+      "isActive": true,
+      "department": {
+        "code": "PRODUCTION",
+        "name": "Production"
+      }
+    },
+    {
+      "nik": "04119120000",
+      "name": "Ruslan",
+      "username": "ruslan.at",
+      "email": "ruslan.at@mrms.com",
+      "phone": "081363331467",
+      "role": "EMPLOYEE",
+      "isActive": true,
+      "department": {
+        "code": "PORT & DISPATCH",
+        "name": "Port & Dispatch"
+      }
+    },
+    {
+      "nik": "04119120000",
+      "name": "Edi Mustopa",
+      "username": "edi.mustopa",
+      "email": "edi.mustopa@mrms.com",
+      "phone": "081363331467",
+      "role": "EMPLOYEE",
+      "isActive": true,
+      "department": {
+        "code": "PORT & DISPATCH",
+        "name": "Port & Dispatch"
+      }
+    },
+    {
+      "nik": "04119120000",
+      "name": "Aulia Rahmi",
+      "username": "aulia.rahmi",
+      "email": "aulia.rahmi@mrms.com",
+      "phone": "081363331467",
+      "role": "EMPLOYEE",
+      "isActive": true,
+      "department": {
+        "code": "PORT & DISPATCH",
+        "name": "Port & Dispatch"
+      }
+    },
+    {
+      "nik": "04119120000",
+      "name": "Triswandi",
+      "username": "triswandi.aj",
+      "email": "triswandi.aj@mrms.com",
+      "phone": "081363331467",
+      "role": "EMPLOYEE",
+      "isActive": true,
+      "department": {
+        "code": "PRODUCTION",
+        "name": "Production"
+      }
+    },
+    {
+      "nik": "04119120000",
+      "name": "Ari Wijanarko",
+      "username": "ari.wijanarko",
+      "email": "ari.wijanarko@mrms.com",
+      "phone": "081363331467",
+      "role": "EMPLOYEE",
+      "isActive": true,
+      "department": {
+        "code": "MAINTENANCE",
+        "name": "Maintenance"
+      }
+    },
+    {
+      "nik": "04119120000",
+      "name": "Riky",
+      "username": "riky.riky",
+      "email": "riky.riky@mrms.com",
+      "phone": "081363331467",
+      "role": "EMPLOYEE",
+      "isActive": true,
+      "department": {
+        "code": "MAINTENANCE",
+        "name": "Maintenance"
+      }
+    },
+    {
+      "nik": "04119120000",
+      "name": "Dika Achyariau Ansyah",
+      "username": "dika.achyariau",
+      "email": "dika.achyariau@mrms.com",
+      "phone": "081363331467",
+      "role": "EMPLOYEE",
+      "isActive": true,
+      "department": {
+        "code": "MAINTENANCE",
+        "name": "Maintenance"
+      }
+    },
+    {
+      "nik": "04119120000",
+      "name": "Ahmad Sobirin",
+      "username": "ahmad.sobirin",
+      "email": "ahmad.sobirin@mrms.com",
+      "phone": "081363331467",
+      "role": "EMPLOYEE",
+      "isActive": true,
+      "department": {
+        "code": "MAINTENANCE",
+        "name": "Maintenance"
+      }
+    },
+    {
+      "nik": "04119120000",
+      "name": "Firman",
+      "username": "firman.iman",
+      "email": "firman.iman@mrms.com",
+      "phone": "081363331467",
+      "role": "EMPLOYEE",
+      "isActive": true,
+      "department": {
+        "code": "WAREHOUSE",
+        "name": "Warehouse"
+      }
+    },
+    {
+      "nik": "04119120000",
+      "name": "Yusrizal",
+      "username": "yus.yusrizal",
+      "email": "yus.yusrizal@mrms.com",
+      "phone": "081363331467",
+      "role": "EMPLOYEE",
+      "isActive": true,
+      "department": {
+        "code": "WAREHOUSE",
+        "name": "Warehouse"
+      }
+    },
+    {
+      "nik": "04119120000",
+      "name": "Ali Akbar",
+      "username": "ali.akbar",
+      "email": "akbar.ali@mrms.com",
+      "phone": "081363331467",
+      "role": "EMPLOYEE",
+      "isActive": true,
+      "department": {
+        "code": "QUALITY",
+        "name": "Quality Control"
+      }
+    },
+    {
+      "nik": "04119120000",
+      "name": "Moneindro",
+      "username": "mone.indro",
+      "email": "mone.indro@mrms.com",
+      "phone": "081363331467",
+      "role": "EMPLOYEE",
+      "isActive": true,
+      "department": {
+        "code": "QUALITY",
+        "name": "Quality Control"
+      }
+    },
+    {
+      "nik": "04119120000",
+      "name": "Suprapto Wiguna",
+      "username": "suprapto.wiguna",
+      "email": "suprapto.wiguna@mrms.com",
+      "phone": "081363331467",
+      "role": "EMPLOYEE",
+      "isActive": true,
+      "department": {
+        "code": "QUALITY",
+        "name": "Quality Control"
+      }
+    },
+    {
+      "nik": "04119120000",
+      "name": "Dhandy Parindo",
+      "username": "dhandy.parindo",
+      "email": "dhandy.parindo@mrms.com",
+      "phone": "081363331467",
+      "role": "EMPLOYEE",
+      "isActive": true,
+      "department": {
+        "code": "SHE",
+        "name": "Safety, Health & Environment"
+      }
+    },
+    {
+      "nik": "04119120000",
+      "name": "Bambang Friadi",
+      "username": "bambang.friadi",
+      "email": "bambang.friadi@mrms.com",
+      "phone": "081363331467",
+      "role": "ADMIN",
+      "isActive": true,
+      "department": {
+        "code": "IT",
+        "name": "Information Technology & Automation"
+      }
+    }
+  ]
+}

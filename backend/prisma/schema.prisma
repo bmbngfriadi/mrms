@@ -1,0 +1,297 @@
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+enum UserRole {
+  EMPLOYEE
+  HRGA
+  ADMIN
+}
+
+enum BookingStatus {
+  CONFIRMED
+  CHECKED_IN
+  COMPLETED
+  CANCELLED
+  NO_SHOW_PENDING
+  NO_SHOW
+}
+
+enum SessionStatus {
+  ACTIVE
+  COMPLETED
+  OVERDUE
+}
+
+model Department {
+  id        String   @id @default(uuid())
+  code      String   @unique
+  name      String
+  isActive  Boolean  @default(true) @map("is_active")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  users User[]
+
+  @@map("departments")
+}
+
+model User {
+  id           String     @id @default(uuid())
+  nik          String     // NIK Karyawan (bisa sama saat pengujian/transisi data)
+  username     String?    @unique // Username
+  name         String
+  email        String     @unique
+  phone        String     // WhatsApp / Phone (bisa sama saat pengujian/transisi data)
+  passwordHash String     @map("password_hash")
+  avatarUrl    String?    @map("avatar_url")
+  role         UserRole   @default(EMPLOYEE)
+  permissions  String[]   @default([]) @map("permissions")
+  departmentId String     @map("department_id")
+  isActive     Boolean    @default(true) @map("is_active")
+  createdAt    DateTime   @default(now()) @map("created_at")
+  updatedAt    DateTime   @updatedAt @map("updated_at")
+
+  department        Department          @relation(fields: [departmentId], references: [id])
+  bookings          Booking[]
+  bookingHistory    BookingHistory[]
+  createdBlocks     RoomBlock[]
+  manualCheckouts   RoomUsageSession[]  @relation("ManualCheckoutUser")
+  auditLogs         AuditLog[]
+  passwordResetOtps PasswordResetOtp[]
+
+  @@map("users")
+}
+
+model MeetingRoom {
+  id                   String   @id @default(uuid())
+  code                 String   @unique
+  name                 String
+  location             String
+  capacity             Int
+  description          String?
+  imageUrl             String?  @map("image_url")
+  photos               String[] @default([]) @map("photos")
+  isActive             Boolean  @default(true) @map("is_active")
+  qrCheckinTokenHash   String   @map("qr_checkin_token_hash")
+  qrCheckoutTokenHash  String   @map("qr_checkout_token_hash")
+  qrCheckinTokenRaw    String?  @map("qr_checkin_token_raw")
+  qrCheckoutTokenRaw   String?  @map("qr_checkout_token_raw")
+  createdAt            DateTime @default(now()) @map("created_at")
+  updatedAt            DateTime @updatedAt @map("updated_at")
+
+  facilities    RoomFacility[]
+  bookings      Booking[]
+  blocks        RoomBlock[]
+  usageSessions RoomUsageSession[]
+
+  @@map("meeting_rooms")
+}
+
+model RoomFacility {
+  id        String   @id @default(uuid())
+  roomId    String   @map("room_id")
+  name      String
+  quantity  Int      @default(1)
+  condition String   @default("GOOD")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  room MeetingRoom @relation(fields: [roomId], references: [id], onDelete: Cascade)
+
+  @@map("room_facilities")
+}
+
+model Booking {
+  id                 String        @id @default(uuid())
+  bookingCode        String        @unique @map("booking_code")
+  roomId             String        @map("room_id")
+  userId             String        @map("user_id")
+  title              String
+  meetingType        String        @default("INTERNAL") @map("meeting_type")
+  attendeesCount     Int           @map("attendees_count")
+  notes              String?
+  startTime          DateTime      @map("start_time")
+  endTime            DateTime      @map("end_time")
+  status             BookingStatus @default(CONFIRMED)
+  cancelledAt        DateTime?     @map("cancelled_at")
+  cancellationReason String?       @map("cancellation_reason")
+  createdAt          DateTime      @default(now()) @map("created_at")
+  updatedAt          DateTime      @updatedAt @map("updated_at")
+
+  room         MeetingRoom       @relation(fields: [roomId], references: [id])
+  user         User              @relation(fields: [userId], references: [id])
+  history      BookingHistory[]
+  usageSession RoomUsageSession?
+
+  @@index([roomId, startTime, endTime])
+  @@index([status])
+  @@index([userId])
+  @@map("bookings")
+}
+
+model BookingHistory {
+  id           String   @id @default(uuid())
+  bookingId    String   @map("booking_id")
+  actorId      String?  @map("actor_id")
+  action       String   // CREATED, RESCHEDULED, EXTENDED, CANCELLED, CHECKED_IN, CHECKED_OUT, MANUAL_CHECKOUT, NO_SHOW_MARKED
+  previousData Json?    @map("previous_data")
+  newData      Json?    @map("new_data")
+  reason       String?
+  createdAt    DateTime @default(now()) @map("created_at")
+
+  booking Booking @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  actor   User?   @relation(fields: [actorId], references: [id])
+
+  @@index([bookingId])
+  @@map("booking_history")
+}
+
+model RoomUsageSession {
+  id                   String        @id @default(uuid())
+  bookingId            String        @unique @map("booking_id")
+  roomId               String        @map("room_id")
+  actualCheckin        DateTime      @default(now()) @map("actual_checkin")
+  actualCheckout       DateTime?     @map("actual_checkout")
+  status               SessionStatus @default(ACTIVE)
+  isManualCheckout     Boolean       @default(false) @map("is_manual_checkout")
+  manualCheckoutById   String?       @map("manual_checkout_by_id")
+  manualCheckoutReason String?       @map("manual_checkout_reason")
+  manualCheckoutActionAt DateTime?   @map("manual_checkout_action_at")
+  createdAt            DateTime      @default(now()) @map("created_at")
+  updatedAt            DateTime      @updatedAt @map("updated_at")
+
+  booking            Booking      @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  room               MeetingRoom  @relation(fields: [roomId], references: [id])
+  manualCheckoutUser User?        @relation("ManualCheckoutUser", fields: [manualCheckoutById], references: [id])
+
+  @@index([roomId, status])
+  @@map("room_usage_sessions")
+}
+
+model RoomBlock {
+  id          String   @id @default(uuid())
+  roomId      String   @map("room_id")
+  title       String
+  reason      String
+  blockType   String   @default("MAINTENANCE") @map("block_type")
+  startTime   DateTime @map("start_time")
+  endTime     DateTime @map("end_time")
+  createdById String   @map("created_by_id")
+  isActive    Boolean  @default(true) @map("is_active")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  room      MeetingRoom @relation(fields: [roomId], references: [id])
+  createdBy User        @relation(fields: [createdById], references: [id])
+
+  @@index([roomId, startTime, endTime])
+  @@map("room_blocks")
+}
+
+model NotificationRecipient {
+  id        String   @id @default(uuid())
+  name      String
+  email     String?
+  phone     String?
+  channel   String   @default("ALL") // ALL, EMAIL, WHATSAPP
+  isActive  Boolean  @default(true) @map("is_active")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@map("notification_recipients")
+}
+
+model NotificationOutbox {
+  id            String    @id @default(uuid())
+  eventId       String    @map("event_id")
+  eventType     String    @map("event_type")
+  channel       String    // EMAIL, WHATSAPP
+  recipient     String
+  recipientName String    @map("recipient_name")
+  subject       String?
+  body          String
+  scheduledAt   DateTime  @default(now()) @map("scheduled_at")
+  status        String    @default("PENDING") // PENDING, PROCESSING, SENT, FAILED, CANCELLED
+  retryCount    Int       @default(0) @map("retry_count")
+  maxRetries    Int       @default(3) @map("max_retries")
+  nextRetryAt   DateTime? @map("next_retry_at")
+  sentAt        DateTime? @map("sent_at")
+  errorMessage  String?   @map("error_message")
+  metadata      Json?
+  createdAt     DateTime  @default(now()) @map("created_at")
+  updatedAt     DateTime  @updatedAt @map("updated_at")
+
+  @@index([status, scheduledAt])
+  @@index([eventId, channel, recipient])
+  @@map("notification_outbox")
+}
+
+model NotificationLog {
+  id               String   @id @default(uuid())
+  outboxId         String?  @map("outbox_id")
+  eventType        String   @map("event_type")
+  channel          String
+  recipient        String
+  status           String   // SENT, FAILED, MOCK_SENT
+  providerResponse String?  @map("provider_response")
+  errorMessage     String?  @map("error_message")
+  isMock           Boolean  @default(false) @map("is_mock")
+  createdAt        DateTime @default(now()) @map("created_at")
+
+  @@index([createdAt])
+  @@map("notification_logs")
+}
+
+model AuditLog {
+  id           String   @id @default(uuid())
+  userId       String?  @map("user_id")
+  action       String
+  resourceType String   @map("resource_type")
+  resourceId   String?  @map("resource_id")
+  ipAddress    String?  @map("ip_address")
+  userAgent    String?  @map("user_agent")
+  oldValues    Json?    @map("old_values")
+  newValues    Json?    @map("new_values")
+  createdAt    DateTime @default(now()) @map("created_at")
+
+  user User? @relation(fields: [userId], references: [id])
+
+  @@index([userId])
+  @@index([resourceType, resourceId])
+  @@index([createdAt])
+  @@map("audit_logs")
+}
+
+model SystemSetting {
+  id          String   @id @default(uuid())
+  key         String   @unique
+  value       String
+  description String?
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  @@map("system_settings")
+}
+
+model PasswordResetOtp {
+  id        String    @id @default(uuid())
+  userId    String    @map("user_id")
+  otpCode   String    @map("otp_code")
+  phone     String
+  expiresAt DateTime  @map("expires_at")
+  usedAt    DateTime? @map("used_at")
+  createdAt DateTime  @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, otpCode])
+  @@index([expiresAt])
+  @@map("password_reset_otps")
+}
+
+

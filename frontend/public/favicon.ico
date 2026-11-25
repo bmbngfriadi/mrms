@@ -1,0 +1,85 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <!-- 1. Pure White Background -->
+  <rect width="512" height="512" fill="#FFFFFF"/>
+
+  <!-- Centered Icon Composition (58% scale for elegant padding / "kecil saja ditengah") -->
+  <g transform="translate(108, 108) scale(0.58)">
+    <defs>
+      <linearGradient id="cardBg" x1="0%" y1="0%" x2="0%" y2="100%">
+        <stop offset="0%" stop-color="#FFFFFF"/>
+        <stop offset="100%" stop-color="#F8FAFC"/>
+      </linearGradient>
+      <linearGradient id="cemindoRed" x1="0%" y1="0%" x2="100%" y2="100%">
+        <stop offset="0%" stop-color="#D9252B"/>
+        <stop offset="100%" stop-color="#B52025"/>
+      </linearGradient>
+      <linearGradient id="tableGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+        <stop offset="0%" stop-color="#334155"/>
+        <stop offset="100%" stop-color="#1E293B"/>
+      </linearGradient>
+      <filter id="cardShadow" x="-12%" y="-8%" width="128%" height="124%">
+        <feDropShadow dx="0" dy="16" stdDeviation="20" flood-color="#0F172A" flood-opacity="0.14"/>
+      </filter>
+      <filter id="badgeShadow" x="-20%" y="-20%" width="145%" height="145%">
+        <feDropShadow dx="0" dy="8" stdDeviation="10" flood-color="#B52025" flood-opacity="0.32"/>
+      </filter>
+    </defs>
+
+    <!-- Base Booking Card with Industrial Border & Soft Shadow -->
+    <rect x="40" y="40" width="432" height="432" rx="52" fill="url(#cardBg)" stroke="#E2E8F0" stroke-width="8" filter="url(#cardShadow)"/>
+
+    <!-- Top Calendar Header Banner in Cemindo Red -->
+    <path d="M 40 92 Q 40 40 92 40 L 420 40 Q 472 40 472 92 L 472 144 L 40 144 Z" fill="url(#cemindoRed)"/>
+
+    <!-- Calendar Rings (Top Mounting Hooks) -->
+    <rect x="132" y="22" width="22" height="40" rx="11" fill="#FFFFFF" stroke="#CBD5E1" stroke-width="4"/>
+    <rect x="358" y="22" width="22" height="40" rx="11" fill="#FFFFFF" stroke="#CBD5E1" stroke-width="4"/>
+
+    <!-- Header Badge / Room Reservation Pill -->
+    <rect x="196" y="82" width="120" height="28" rx="14" fill="rgba(255,255,255,0.25)"/>
+    <circle cx="218" cy="96" r="6" fill="#FFFFFF"/>
+    <rect x="234" y="93" width="62" height="6" rx="3" fill="#FFFFFF"/>
+
+    <!-- Meeting Room Screen / Presentation Wall Display -->
+    <rect x="176" y="168" width="160" height="92" rx="12" fill="#0F172A" stroke="#475569" stroke-width="3.5"/>
+    <rect x="184" y="176" width="144" height="76" rx="8" fill="#1E293B"/>
+
+    <image href="data:image/png;base64,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" x="220" y="186" width="72" height="50"/>
+
+    <!-- Wall Mount Pole & Foot -->
+    <rect x="251" y="260" width="10" height="12" fill="#64748B"/>
+    <rect x="236" y="272" width="40" height="5" rx="2.5" fill="#475569"/>
+
+    <!-- Boardroom Meeting Chairs - Top Row (Behind Table) -->
+    <rect x="146" y="280" width="38" height="22" rx="9" fill="#64748B"/>
+    <rect x="237" y="280" width="38" height="22" rx="9" fill="#64748B"/>
+    <rect x="328" y="280" width="38" height="22" rx="9" fill="#64748B"/>
+
+    <!-- Boardroom Meeting Chairs - Left & Right Heads -->
+    <rect x="88" y="330" width="22" height="38" rx="9" fill="#64748B"/>
+    <rect x="402" y="330" width="22" height="38" rx="9" fill="#64748B"/>
+
+    <!-- Central Executive Conference Table (Pill Shaped Boardroom Table) -->
+    <rect x="118" y="308" width="276" height="82" rx="41" fill="url(#tableGrad)" stroke="#64748B" stroke-width="4.5"/>
+
+    <!-- Conference Table Center Technology Strip & Microphones -->
+    <rect x="178" y="340" width="156" height="18" rx="9" fill="#0F172A"/>
+    <circle cx="212" cy="349" r="4" fill="#B52025"/>
+    <circle cx="256" cy="349" r="4" fill="#94A3B8"/>
+    <circle cx="300" cy="349" r="4" fill="#10B981"/>
+
+    <!-- Boardroom Meeting Chairs - Bottom Row (In Front of Table) -->
+    <rect x="146" y="396" width="38" height="22" rx="9" fill="#475569"/>
+    <rect x="237" y="396" width="38" height="22" rx="9" fill="#475569"/>
+    <rect x="328" y="396" width="38" height="22" rx="9" fill="#475569"/>
+
+    <!-- Floating Booking Schedule Clock Badge (Bottom-Right) -->
+    <g transform="translate(364, 364)" filter="url(#badgeShadow)">
+      <circle cx="48" cy="48" r="46" fill="url(#cemindoRed)" stroke="#FFFFFF" stroke-width="6"/>
+      <!-- Clock Face -->
+      <circle cx="48" cy="48" r="28" fill="none" stroke="#FFFFFF" stroke-width="5"/>
+      <!-- Clock Hands Pointing to Meeting Time -->
+      <path d="M 48 30 L 48 48 L 62 48" fill="none" stroke="#FFFFFF" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/>
+    </g>
+  </g>
+</svg>

@@ -1,0 +1,148 @@
+services:
+  postgres:
+    image: postgres:15-alpine
+    container_name: mrms-postgres
+    restart: always
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-mrms_db}
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-CemindoPlantBatam2026!}
+    volumes:
+      - mrms_pgdata:/var/lib/postgresql/data
+      - ./backend/prisma/migrations/20261113000000_init/migration.sql:/docker-entrypoint-initdb.d/01_init.sql:ro
+    networks:
+      - mrms_network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres} -d ${POSTGRES_DB:-mrms_db}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: mrms-backend
+    restart: always
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      NODE_ENV: production
+      PORT: 5000
+      DATABASE_URL: postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-CemindoPlantBatam2026!}@postgres:5432/${POSTGRES_DB:-mrms_db}?schema=public
+      JWT_SECRET: ${JWT_SECRET:-cemindo-plant-batam-secret-jwt-key-2026-secure}
+      APP_BASE_URL: ${APP_BASE_URL:-https://cg-plantbatam.com/mrms}
+      API_PREFIX: ${API_PREFIX:-/mrms/api}
+      NOTIFICATION_MODE: ${NOTIFICATION_MODE:-mock}
+      SMTP_HOST: ${SMTP_HOST:-smtp.gmail.com}
+      SMTP_PORT: ${SMTP_PORT:-587}
+      SMTP_SECURE: ${SMTP_SECURE:-false}
+      SMTP_USER: ${SMTP_USER:-}
+      SMTP_PASS: ${SMTP_PASS:-}
+      SMTP_FROM: ${SMTP_FROM:-MRMS PT Cemindo Gemilang Tbk <noreply-mrms@cemindogemilang.com>}
+      WA_API_URL: ${WA_API_URL:-}
+      WA_API_TOKEN: ${WA_API_TOKEN:-}
+      BACKEND_INTERNAL_URL: http://backend:5000/mrms/api
+    volumes:
+      - mrms_wadata:/app/data
+    networks:
+      - mrms_network
+    command: >
+      sh -c "npx prisma generate &&
+             (npx prisma migrate resolve --applied 20261113000000_init || npx prisma migrate deploy) &&
+             node prisma/seed.js &&
+             npm start"
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:5000/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  notification-worker:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: mrms-worker
+    restart: always
+    depends_on:
+      backend:
+        condition: service_healthy
+    environment:
+      NODE_ENV: production
+      DATABASE_URL: postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-CemindoPlantBatam2026!}@postgres:5432/${POSTGRES_DB:-mrms_db}?schema=public
+      JWT_SECRET: ${JWT_SECRET:-cemindo-plant-batam-secret-jwt-key-2026-secure}
+      NOTIFICATION_MODE: ${NOTIFICATION_MODE:-mock}
+      SMTP_HOST: ${SMTP_HOST:-smtp.gmail.com}
+      SMTP_PORT: ${SMTP_PORT:-587}
+      SMTP_SECURE: ${SMTP_SECURE:-false}
+      SMTP_USER: ${SMTP_USER:-}
+      SMTP_PASS: ${SMTP_PASS:-}
+      SMTP_FROM: ${SMTP_FROM:-MRMS PT Cemindo Gemilang Tbk <noreply-mrms@cemindogemilang.com>}
+      WA_API_URL: ${WA_API_URL:-}
+      WA_API_TOKEN: ${WA_API_TOKEN:-}
+      BACKEND_INTERNAL_URL: http://backend:5000/mrms/api
+    volumes:
+      - mrms_wadata:/app/data
+    networks:
+      - mrms_network
+    command: ["npm", "run", "worker"]
+    healthcheck:
+      test: ["CMD-SHELL", "pgrep -f 'node src/worker.js' || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+
+  scheduler:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: mrms-scheduler
+    restart: always
+    depends_on:
+      backend:
+        condition: service_healthy
+    environment:
+      NODE_ENV: production
+      DATABASE_URL: postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-CemindoPlantBatam2026!}@postgres:5432/${POSTGRES_DB:-mrms_db}?schema=public
+      JWT_SECRET: ${JWT_SECRET:-cemindo-plant-batam-secret-jwt-key-2026-secure}
+      NOTIFICATION_MODE: ${NOTIFICATION_MODE:-mock}
+    networks:
+      - mrms_network
+    command: ["npm", "run", "scheduler"]
+    healthcheck:
+      test: ["CMD-SHELL", "pgrep -f 'node src/scheduler-runner.js' || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: mrms-frontend
+    restart: always
+    ports:
+      - "80:80"
+      - "${WEB_PORT:-8080}:80"
+    depends_on:
+      backend:
+        condition: service_healthy
+    networks:
+      - mrms_network
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://127.0.0.1/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
+networks:
+  mrms_network:
+    driver: bridge
+
+volumes:
+  mrms_pgdata:
+    driver: local
+  mrms_wadata:
+    driver: local
+

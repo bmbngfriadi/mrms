@@ -1,0 +1,60 @@
+<!doctype html>
+<html lang="id">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+    <title>Meeting Room Management System | PT Cemindo Gemilang Tbk - Plant Batam</title>
+
+    <!-- PWA & Web App Manifest -->
+    <link rel="manifest" href="/meeting-room/manifest.webmanifest" />
+    <meta name="theme-color" content="#b52025" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="application-name" content="MRMS Cemindo" />
+
+    <!-- Apple iOS Safari PWA Meta & Icons -->
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+    <meta name="apple-mobile-web-app-title" content="MRMS Cemindo" />
+    <link rel="apple-touch-icon" sizes="180x180" href="/meeting-room/apple-touch-icon.png" />
+    <link rel="apple-touch-startup-image" href="/meeting-room/pwa-512x512.png" />
+
+    <!-- Browser Favicons (Tab Bar / Address Bar) -->
+    <link rel="icon" type="image/svg+xml" href="/meeting-room/favicon.svg" />
+    <link rel="icon" type="image/png" sizes="32x32" href="/meeting-room/favicon-32x32.png" />
+    <link rel="icon" type="image/png" sizes="16x16" href="/meeting-room/favicon-16x16.png" />
+    <link rel="shortcut icon" href="/meeting-room/favicon.png" />
+
+    <script>
+      (function() {
+        try {
+          var theme = localStorage.getItem('mrms_theme');
+          var prefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+          if (theme === 'dark' || (!theme && prefersDark)) {
+            document.documentElement.classList.add('dark');
+            document.documentElement.style.colorScheme = 'dark';
+          } else {
+            document.documentElement.classList.remove('dark');
+            document.documentElement.style.colorScheme = 'light';
+          }
+        } catch (e) {}
+
+        // Register Service Worker for PWA
+        if ('serviceWorker' in navigator) {
+          window.addEventListener('load', function() {
+            navigator.serviceWorker.register('/meeting-room/sw.js', { scope: '/meeting-room/' })
+              .then(function(reg) {
+                console.log('[PWA] Service Worker registered with scope:', reg.scope);
+              })
+              .catch(function(err) {
+                console.warn('[PWA] Service Worker registration failed:', err);
+              });
+          });
+        }
+      })();
+    </script>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.jsx"></script>
+  </body>
+</html>
