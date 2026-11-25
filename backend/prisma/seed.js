@@ -42,11 +42,22 @@ async function main() {
   // 2. Departments (Strictly preserve existing operational departments)
   const existingDeptsCount = await prisma.department.count();
   const depts = {};
+
+  const mapDeptAliases = (d) => {
+    depts[d.code] = d;
+    if (d.code.includes('HRGA')) depts['HRGA'] = d;
+    if (d.code.includes('PROD') || d.code.includes('PRD')) depts['PRD'] = d;
+    if (d.code.includes('MAINT') || d.code.includes('ENG')) depts['ENG'] = d;
+    if (d.code.includes('WAREHOUSE') || d.code.includes('PORT') || d.code.includes('LOG')) depts['LOG'] = d;
+    if (d.code.includes('FIN')) depts['FIN'] = d;
+    if (d.code === 'IT' || d.code.includes('IT')) depts['IT'] = d;
+  };
+
   if (existingDeptsCount > 0) {
     console.log(`[Seed] Found ${existingDeptsCount} existing departments in database. Preserving operational departments, skipping department seed.`);
     const existing = await prisma.department.findMany();
     for (const d of existing) {
-      depts[d.code] = d;
+      mapDeptAliases(d);
     }
   } else {
     // Default initial seed only if database is completely empty
@@ -64,11 +75,22 @@ async function main() {
     ];
 
     for (const d of departmentsData) {
-      depts[d.code] = await prisma.department.create({
+      const created = await prisma.department.create({
         data: d,
       });
+      mapDeptAliases(created);
     }
   }
+
+  const getDeptId = (key) => {
+    if (depts[key]?.id) return depts[key].id;
+    const found = Object.values(depts).find(d => 
+      d.code.toLowerCase().includes(key.toLowerCase()) || 
+      d.name.toLowerCase().includes(key.toLowerCase())
+    );
+    if (found?.id) return found.id;
+    return Object.values(depts)[0]?.id;
+  };
 
   // 3. Users (Preserve any existing users or updates made by the administrator/user)
   const existingUsersCount = await prisma.user.count();
@@ -91,7 +113,7 @@ async function main() {
         email: 'admin@cemindogemilang.com',
         phone: '081270001001',
         role: 'ADMIN',
-        departmentId: depts['IT'].id,
+        departmentId: getDeptId('IT'),
       },
       {
         nik: 'CG-HRGA-001',
@@ -100,7 +122,7 @@ async function main() {
         email: 'hrga@cemindogemilang.com',
         phone: '081270002002',
         role: 'HRGA',
-        departmentId: depts['HRGA'].id,
+        departmentId: getDeptId('HRGA'),
       },
       {
         nik: 'CG-PRD-010',
@@ -109,7 +131,7 @@ async function main() {
         email: 'budi.santoso@cemindogemilang.com',
         phone: '081270003003',
         role: 'EMPLOYEE',
-        departmentId: depts['PRD'].id,
+        departmentId: getDeptId('PRD'),
       },
       {
         nik: 'CG-ENG-022',
@@ -118,7 +140,7 @@ async function main() {
         email: 'siti.aminah@cemindogemilang.com',
         phone: '081270004004',
         role: 'EMPLOYEE',
-        departmentId: depts['ENG'].id,
+        departmentId: getDeptId('ENG'),
       },
       {
         nik: 'CG-LOG-035',
@@ -127,7 +149,7 @@ async function main() {
         email: 'hendra.wijaya@cemindogemilang.com',
         phone: '081270005005',
         role: 'EMPLOYEE',
-        departmentId: depts['LOG'].id,
+        departmentId: getDeptId('LOG'),
       },
       {
         nik: 'CG-IT-044',
@@ -136,7 +158,7 @@ async function main() {
         email: 'dewi.lestari@cemindogemilang.com',
         phone: '081270006006',
         role: 'EMPLOYEE',
-        departmentId: depts['IT'].id,
+        departmentId: getDeptId('IT'),
       },
       {
         nik: 'CG-FIN-051',
@@ -145,7 +167,7 @@ async function main() {
         email: 'ahmad.fauzi@cemindogemilang.com',
         phone: '081270007007',
         role: 'EMPLOYEE',
-        departmentId: depts['FIN'].id,
+        departmentId: getDeptId('FIN'),
       },
     ];
 
