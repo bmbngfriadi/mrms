@@ -392,20 +392,20 @@ export default function AdminUsers() {
         {/* Action Buttons Toolbar: Desktop Single Horizontal Row / Mobile Ergonomic Stack */}
         <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 shrink-0">
           {/* Secondary Utilities: Download Template & Bulk Import */}
-          <div className="grid grid-cols-2 sm:flex sm:items-center gap-2 order-2 sm:order-1">
+          <div className="flex flex-wrap sm:flex-nowrap items-center gap-2 order-2 sm:order-1">
             <button
               type="button"
               onClick={handleDownloadTemplate}
               disabled={downloadingTemplate}
-              className="btn btn-secondary text-xs sm:text-sm flex items-center justify-center gap-1.5 shadow-xs whitespace-nowrap px-3.5 py-2 font-bold cursor-pointer transition"
+              className="btn btn-secondary flex-1 sm:flex-initial text-xs sm:text-sm flex items-center justify-center gap-1.5 shadow-xs whitespace-nowrap px-3.5 py-2 font-bold cursor-pointer transition min-w-0"
               title="Download Template Format Excel (.xlsx)"
             >
               {downloadingTemplate ? (
-                <Loader2 size={15} className="animate-spin text-brand-600" />
+                <Loader2 size={15} className="animate-spin text-brand-600 shrink-0" />
               ) : (
-                <Download size={15} className="text-slate-500" />
+                <Download size={15} className="text-slate-500 shrink-0" />
               )}
-              <span>{downloadingTemplate ? 'Mengunduh...' : 'Download Template'}</span>
+              <span className="truncate">{downloadingTemplate ? 'Mengunduh...' : 'Download Template'}</span>
             </button>
 
             <button
@@ -417,11 +417,11 @@ export default function AdminUsers() {
                 setShowSkippedDetails(false);
                 setImportModalOpen(true);
               }}
-              className="btn bg-slate-800 hover:bg-slate-900 text-white text-xs sm:text-sm flex items-center justify-center gap-1.5 shadow-xs whitespace-nowrap px-3.5 py-2 font-bold cursor-pointer transition"
+              className="btn bg-slate-800 hover:bg-slate-900 text-white flex-1 sm:flex-initial text-xs sm:text-sm flex items-center justify-center gap-1.5 shadow-xs whitespace-nowrap px-3.5 py-2 font-bold cursor-pointer transition min-w-0"
               title="Bulk Import Pengguna dari File Excel / CSV"
             >
-              <Upload size={15} />
-              <span>Bulk Import</span>
+              <Upload size={15} className="shrink-0" />
+              <span className="truncate">Bulk Import</span>
             </button>
           </div>
 
@@ -438,7 +438,7 @@ export default function AdminUsers() {
       </div>
 
       {/* Filter / Search Bar - Placeholder-Free */}
-      <div className="relative max-w-sm flex items-center">
+      <div className="relative w-full sm:max-w-sm flex items-center">
         <Search size={16} className="absolute left-3 text-slate-400 pointer-events-none" />
         <input
           type="text"

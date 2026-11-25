@@ -49,14 +49,14 @@ export default function BookingDetail() {
 
   return (
     <div className="max-w-4xl mx-auto space-y-6">
-      <div className="flex items-center gap-3">
-        <Link to="/my-bookings" className="btn btn-ghost py-1.5 px-2.5 text-xs">
+      <div className="flex flex-wrap items-center gap-3">
+        <Link to="/my-bookings" className="btn btn-ghost py-1.5 px-3 text-xs shrink-0">
           <ArrowLeft size={16} />
           <span>{t('Kembali')}</span>
         </Link>
-        <div>
-          <span className="text-[10px] font-mono font-bold text-slate-400">{booking.bookingCode}</span>
-          <h1 className="text-xl sm:text-2xl font-black text-slate-800 dark:text-white">{booking.title}</h1>
+        <div className="min-w-0 flex-1">
+          <span className="text-[10px] font-mono font-bold text-slate-400 block">{booking.bookingCode}</span>
+          <h1 className="text-xl sm:text-2xl font-black text-slate-800 dark:text-white break-words">{booking.title}</h1>
         </div>
       </div>
 

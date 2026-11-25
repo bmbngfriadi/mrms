@@ -83,7 +83,7 @@ export default function Shell() {
     }`;
 
   return (
-    <div className="min-h-screen bg-slate-100 dark:bg-slate-950 flex flex-col">
+    <div className="min-h-screen bg-slate-100 dark:bg-slate-950 flex flex-col overflow-x-hidden">
       {/* ============================================================== */}
       {/* DESKTOP SIDEBAR (Fixed w-64 on lg screens)                    */}
       {/* ============================================================== */}
@@ -400,9 +400,11 @@ export default function Shell() {
       {/* ============================================================== */}
       {/* MAIN CONTENT AREA                                              */}
       {/* ============================================================== */}
-      <main className="flex-1 lg:pl-64 pb-24 lg:pb-8 p-4 sm:p-6 max-w-7xl w-full mx-auto">
-        <Outlet />
-      </main>
+      <div className="flex-1 lg:pl-64 flex flex-col min-w-0">
+        <main className="flex-1 pb-24 lg:pb-8 p-4 sm:p-6 max-w-7xl w-full mx-auto min-w-0">
+          <Outlet />
+        </main>
+      </div>
 
       {/* ============================================================== */}
       {/* MOBILE ENLARGED BOTTOM NAVIGATION BAR (h-[68px], 5 SLOTS)      */}

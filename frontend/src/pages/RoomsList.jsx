@@ -47,7 +47,7 @@ export default function RoomsList() {
             {t('Daftar ruangan rapat PT Cemindo Gemilang Tbk – Plant Batam.')}
           </p>
         </div>
-        <Link to="/bookings/new" className="btn btn-primary text-xs sm:text-sm self-start sm:self-auto">
+        <Link to="/bookings/new" className="btn btn-primary text-xs sm:text-sm w-full sm:w-auto">
           {t('Reservasi Ruangan')}
         </Link>
       </div>

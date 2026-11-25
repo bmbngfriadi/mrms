@@ -312,7 +312,7 @@ export default function Login() {
                       : 'text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 hover:bg-white/40'
                   }`}
                 >
-                  <span className="leading-none text-[11px] sm:text-xs font-bold text-center truncate">
+                  <span className="leading-none text-[10px] sm:text-xs font-bold text-center truncate">
                     {tab.label}
                   </span>
                 </button>

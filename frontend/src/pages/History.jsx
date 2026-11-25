@@ -224,11 +224,11 @@ export default function HistoryPage() {
 
         {/* Scope Toggle for Admin / HRGA */}
         {(isAdmin || hasPermission('menu:all_bookings')) && (
-          <div className="flex items-center gap-1 bg-slate-200/80 dark:bg-slate-800 p-1 rounded-xl self-start md:self-auto text-xs font-bold">
+          <div className="flex items-center gap-1 bg-slate-200/80 dark:bg-slate-800 p-1 rounded-xl w-full sm:w-auto text-xs font-bold">
             <button
               type="button"
               onClick={() => setViewScope('my')}
-              className={`px-3 py-1.5 rounded-lg transition cursor-pointer ${
+              className={`flex-1 sm:flex-initial px-3 py-1.5 rounded-lg transition cursor-pointer text-center ${
                 viewScope === 'my'
                   ? 'bg-white dark:bg-slate-900 text-brand-600 dark:text-brand-400 shadow-xs'
                   : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
@@ -239,7 +239,7 @@ export default function HistoryPage() {
             <button
               type="button"
               onClick={() => setViewScope('all')}
-              className={`px-3 py-1.5 rounded-lg transition cursor-pointer flex items-center gap-1.5 ${
+              className={`flex-1 sm:flex-initial px-3 py-1.5 rounded-lg transition cursor-pointer flex items-center justify-center gap-1.5 ${
                 viewScope === 'all'
                   ? 'bg-white dark:bg-slate-900 text-brand-600 dark:text-brand-400 shadow-xs'
                   : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'

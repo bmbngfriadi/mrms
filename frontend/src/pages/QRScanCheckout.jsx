@@ -60,31 +60,32 @@ export default function QRScanCheckout() {
   return (
     <div className="max-w-md mx-auto space-y-5">
       {/* Header & Tabs */}
-      <div className="flex items-center justify-between gap-3">
-        <div className="flex items-center gap-3">
-          <Link to="/" className="btn btn-ghost py-1.5 px-3 text-xs">
+      <div className="space-y-3">
+        <div className="flex items-center justify-between gap-2">
+          <Link to="/" className="btn btn-ghost py-1.5 px-3 text-xs shrink-0 whitespace-nowrap">
             <ArrowLeft size={16} />
             <span>{t('Kembali')}</span>
           </Link>
-          <div>
-            <h1 className="text-xl sm:text-2xl font-black text-slate-800 dark:text-white">
-              {t('QR Check-Out')}
-            </h1>
-            <p className="text-xs text-slate-500">
-              {t('Pindai QR keluar saat selesai menggunakan ruangan meeting.')}
-            </p>
-          </div>
+
+          {/* Quick Switch to Check-In */}
+          <Link
+            to="/scan/checkin"
+            className="btn btn-ghost py-1.5 px-3 text-xs text-emerald-600 dark:text-emerald-400 font-bold shrink-0 whitespace-nowrap"
+            title={t('Beralih ke QR Check-In')}
+          >
+            <span>{t('Ke Check-In')}</span>
+            <ArrowRight size={14} />
+          </Link>
         </div>
 
-        {/* Quick Switch to Check-In */}
-        <Link
-          to="/scan/checkin"
-          className="btn btn-ghost text-xs text-emerald-600 dark:text-emerald-400 font-bold flex items-center gap-1"
-          title={t('Beralih ke QR Check-In')}
-        >
-          <span>{t('Ke Check-In')}</span>
-          <ArrowRight size={14} />
-        </Link>
+        <div>
+          <h1 className="text-xl sm:text-2xl font-black text-slate-800 dark:text-white">
+            {t('QR Check-Out')}
+          </h1>
+          <p className="text-xs text-slate-500 mt-0.5">
+            {t('Pindai QR keluar saat selesai menggunakan ruangan meeting.')}
+          </p>
+        </div>
       </div>
 
       {result ? (

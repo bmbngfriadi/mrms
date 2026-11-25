@@ -236,21 +236,27 @@ export default function HRGABlocks() {
                 />
               </div>
 
-              <div className="grid grid-cols-2 gap-2.5">
-                <input
-                  type="datetime-local"
-                  required
-                  className="input text-xs font-bold"
-                  value={startTime}
-                  onChange={(e) => setStartTime(e.target.value)}
-                />
-                <input
-                  type="datetime-local"
-                  required
-                  className="input text-xs font-bold"
-                  value={endTime}
-                  onChange={(e) => setEndTime(e.target.value)}
-                />
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                <div>
+                  <label className="label">Waktu Mulai</label>
+                  <input
+                    type="datetime-local"
+                    required
+                    className="input text-xs font-bold"
+                    value={startTime}
+                    onChange={(e) => setStartTime(e.target.value)}
+                  />
+                </div>
+                <div>
+                  <label className="label">Waktu Selesai</label>
+                  <input
+                    type="datetime-local"
+                    required
+                    className="input text-xs font-bold"
+                    value={endTime}
+                    onChange={(e) => setEndTime(e.target.value)}
+                  />
+                </div>
               </div>
 
               <div className="pt-3 border-t border-slate-100 dark:border-slate-800 flex justify-end gap-2">

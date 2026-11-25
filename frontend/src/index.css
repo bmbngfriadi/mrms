@@ -86,6 +86,16 @@
   box-shadow: 0 0 0 2px rgba(181, 32, 37, 0.2);
 }
 
+input[type="date"],
+input[type="time"],
+input[type="datetime-local"] {
+  -webkit-appearance: none;
+  appearance: none;
+  min-width: 0;
+  max-width: 100%;
+  box-sizing: border-box;
+}
+
 .label {
   display: block;
   font-size: 0.8125rem;
@@ -146,6 +156,25 @@
 }
 .dark .btn-ghost:hover:not(:disabled) {
   background-color: #1e293b;
+  color: #ffffff;
+}
+
+.btn-secondary {
+  background-color: #ffffff;
+  color: #334155;
+  border-color: #cbd5e1;
+}
+.btn-secondary:hover:not(:disabled) {
+  background-color: #f8fafc;
+  color: #0f172a;
+}
+.dark .btn-secondary {
+  background-color: #1e293b;
+  color: #e2e8f0;
+  border-color: #334155;
+}
+.dark .btn-secondary:hover:not(:disabled) {
+  background-color: #334155;
   color: #ffffff;
 }
 

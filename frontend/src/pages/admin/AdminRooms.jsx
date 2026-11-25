@@ -515,7 +515,7 @@ export default function AdminRooms() {
               </div>
 
               {/* Code & Capacity */}
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
                   <label className="label">Kode Ruangan</label>
                   <input

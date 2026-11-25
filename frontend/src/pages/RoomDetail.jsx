@@ -41,14 +41,14 @@ export default function RoomDetail() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between gap-3">
-        <Link to="/rooms" className="btn btn-ghost py-1.5 px-3 text-xs">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <Link to="/rooms" className="btn btn-ghost py-1.5 px-3 text-xs whitespace-nowrap">
           <ArrowLeft size={16} />
-          <span>{t('Kembali ke Daftar Ruangan')}</span>
+          <span>{t('Kembali')}</span>
         </Link>
         <Link
           to={`/bookings/new?roomId=${room.id}`}
-          className="btn btn-primary text-xs sm:text-sm"
+          className="btn btn-primary text-xs sm:text-sm whitespace-nowrap"
         >
           <PlusCircle size={16} />
           <span>{t('Pesan Ruangan Ini')}</span>
