@@ -4,7 +4,7 @@ import { useI18n } from '../context/I18nContext';
 import CemindoRhinoBadge from '../components/CemindoRhinoBadge';
 import CameraQRScanner, { extractCleanToken } from '../components/CameraQRScanner';
 import api from '../services/api';
-import { QrCode, CheckCircle2, AlertCircle, ArrowLeft, Camera, LogIn, ArrowRight } from 'lucide-react';
+import { QrCode, CheckCircle2, AlertCircle, ArrowLeft, Camera, LogIn, ArrowRight, DoorOpen, Clock, User } from 'lucide-react';
 
 export default function QRScanCheckout() {
   const { t } = useI18n();
@@ -14,11 +14,13 @@ export default function QRScanCheckout() {
 
   const [qrToken, setQrToken] = useState(initialCode);
   const [loading, setLoading] = useState(false);
+  const [confirming, setConfirming] = useState(false);
   const [error, setError] = useState('');
+  const [previewData, setPreviewData] = useState(null);
   const [result, setResult] = useState(null);
   const [showCamera, setShowCamera] = useState(false);
 
-  const handleProcessCheckout = async (tokenToUse) => {
+  const handlePreviewCheckout = async (tokenToUse) => {
     const raw = tokenToUse !== undefined ? tokenToUse : qrToken;
     const token = extractCleanToken(raw);
     if (!token) {
@@ -28,12 +30,18 @@ export default function QRScanCheckout() {
 
     setError('');
     setLoading(true);
+    setPreviewData(null);
     setResult(null);
 
     try {
-      const res = await api.post('/room-usage/checkout', { qrToken: token });
-      setResult(res.data.data);
+      const res = await api.post('/room-usage/checkout/preview', { qrToken: token });
+      const data = res.data.data;
       setShowCamera(false);
+      if (data?.alreadyCheckedOut) {
+        setResult(data);
+      } else {
+        setPreviewData({ ...data, qrToken: token });
+      }
     } catch (err) {
       setError(
         err.response?.data?.message ||
@@ -44,9 +52,33 @@ export default function QRScanCheckout() {
     }
   };
 
+  const handleConfirmCheckout = async () => {
+    if (!previewData?.qrToken) return;
+
+    setError('');
+    setConfirming(true);
+
+    try {
+      const res = await api.post('/room-usage/checkout', {
+        qrToken: previewData.qrToken,
+        bookingId: previewData.booking?.id,
+      });
+      setResult(res.data.data);
+      setPreviewData(null);
+    } catch (err) {
+      setError(
+        err.response?.data?.message ||
+          t('Check-out gagal. Pastikan QR valid dan terdapat sesi rapat aktif di ruangan ini.')
+      );
+      setPreviewData(null);
+    } finally {
+      setConfirming(false);
+    }
+  };
+
   useEffect(() => {
     if (initialCode) {
-      handleProcessCheckout(initialCode);
+      handlePreviewCheckout(initialCode);
     }
   }, [initialCode]);
 
@@ -54,7 +86,7 @@ export default function QRScanCheckout() {
     const clean = extractCleanToken(token);
     setQrToken(clean);
     setShowCamera(false);
-    handleProcessCheckout(clean);
+    handlePreviewCheckout(clean);
   };
 
   return (
@@ -132,6 +164,82 @@ export default function QRScanCheckout() {
             </Link>
           </div>
         </div>
+      ) : previewData ? (
+        <div className="card p-6 border-rose-500/60 shadow-md space-y-5 animate-in zoom-in-95">
+          <div className="text-center space-y-2">
+            <div className="w-14 h-14 rounded-2xl bg-rose-50 dark:bg-rose-950/50 text-rose-600 border border-rose-200 dark:border-rose-800 flex items-center justify-center mx-auto">
+              <DoorOpen size={28} />
+            </div>
+            <h2 className="text-lg font-black text-slate-800 dark:text-white">
+              {t('Konfirmasi Check-Out Ruangan')}
+            </h2>
+            <p className="text-xs text-slate-500">
+              {t('Pastikan rapat telah selesai dan ruangan rapi sebelum melakukan check-out.')}
+            </p>
+          </div>
+
+          <div className="p-4 bg-slate-50 dark:bg-slate-800/60 rounded-xl border border-slate-200 dark:border-slate-700 space-y-2.5 text-xs">
+            <div className="flex items-start justify-between gap-3">
+              <span className="text-slate-500 shrink-0">{t('Ruangan')}:</span>
+              <strong className="text-slate-800 dark:text-white text-right">
+                {previewData.room?.name} ({previewData.room?.location})
+              </strong>
+            </div>
+            <div className="flex items-start justify-between gap-3">
+              <span className="text-slate-500 shrink-0">{t('Kode Reservasi')}:</span>
+              <strong className="font-mono text-brand-600 dark:text-brand-400 text-right">
+                {previewData.booking?.bookingCode}
+              </strong>
+            </div>
+            <div className="flex items-start justify-between gap-3">
+              <span className="text-slate-500 shrink-0">{t('Agenda')}:</span>
+              <strong className="text-slate-800 dark:text-white text-right">
+                {previewData.booking?.title}
+              </strong>
+            </div>
+            <div className="flex items-start justify-between gap-3">
+              <span className="text-slate-500 shrink-0">{t('Pemesan')}:</span>
+              <span className="font-semibold text-slate-700 dark:text-slate-200 text-right flex items-center gap-1">
+                <User size={13} className="text-slate-400" />
+                {previewData.booking?.user?.name}
+              </span>
+            </div>
+            <div className="flex items-start justify-between gap-3">
+              <span className="text-slate-500 shrink-0">{t('Waktu Masuk')}:</span>
+              <span className="font-bold text-emerald-600 dark:text-emerald-400 text-right flex items-center gap-1">
+                <Clock size={13} />
+                {previewData.session?.actualCheckin
+                  ? `${new Date(previewData.session.actualCheckin).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })} WIB`
+                  : '-'}
+              </span>
+            </div>
+          </div>
+
+          <div className="space-y-2.5">
+            <button
+              type="button"
+              onClick={handleConfirmCheckout}
+              disabled={confirming}
+              className="w-full btn bg-rose-600 hover:bg-rose-700 text-white text-sm font-black py-3 shadow-sm"
+            >
+              <CheckCircle2 size={18} />
+              <span>{confirming ? t('Memproses Check-Out...') : t('Konfirmasi Check-Out Sekarang')}</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => {
+                setPreviewData(null);
+                setQrToken('');
+                navigate('/scan/checkout', { replace: true });
+              }}
+              disabled={confirming}
+              className="w-full btn btn-ghost text-xs"
+            >
+              {t('Batal / Scan QR Lain')}
+            </button>
+          </div>
+        </div>
       ) : (
         <div className="card p-6 space-y-4">
           <div className="flex justify-center pb-1">
@@ -198,7 +306,7 @@ export default function QRScanCheckout() {
           <form
             onSubmit={(e) => {
               e.preventDefault();
-              handleProcessCheckout();
+              handlePreviewCheckout();
             }}
             className="space-y-3"
           >

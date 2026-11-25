@@ -49,6 +49,22 @@ async function handleCheckin(req, res, next) {
   }
 }
 
+async function handleCheckoutPreview(req, res, next) {
+  try {
+    const { qrToken, bookingId } = req.body;
+    const result = await roomUsageService.previewCheckout({
+      qrToken,
+      bookingId,
+      userId: req.user.id,
+      userRole: req.user.role,
+    });
+
+    return successResponse(res, result, 'Data sesi aktif siap untuk konfirmasi check-out.');
+  } catch (err) {
+    next(err);
+  }
+}
+
 async function handleCheckout(req, res, next) {
   try {
     const { qrToken, bookingId } = req.body;
@@ -155,6 +171,7 @@ async function getOverdueSessions(req, res, next) {
 module.exports = {
   handleCheckinPreview,
   handleCheckin,
+  handleCheckoutPreview,
   handleCheckout,
   handleManualCheckout,
   getActiveSessions,

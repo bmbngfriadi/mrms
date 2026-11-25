@@ -326,9 +326,9 @@ class RoomUsageService {
   }
 
   /**
-   * Process QR Check-out
+   * Validate QR token and active usage session before check-out
    */
-  async checkout({ qrToken, bookingId, userId, userRole }) {
+  async validateCheckout({ qrToken, bookingId, userId, userRole }) {
     if (!qrToken) {
       throw { statusCode: 400, message: 'QR Token wajib disertakan.' };
     }
@@ -452,6 +452,54 @@ class RoomUsageService {
       };
     }
 
+    return { room, session, booking: session.booking, isIdempotent: false };
+  }
+
+  /**
+   * Preview Check-out details without changing status or sending notifications
+   */
+  async previewCheckout({ qrToken, bookingId, userId, userRole }) {
+    const validated = await this.validateCheckout({
+      qrToken,
+      bookingId,
+      userId,
+      userRole,
+    });
+
+    if (validated.isIdempotent) {
+      return {
+        room: validated.room,
+        session: validated.session,
+        booking: validated.booking,
+        alreadyCheckedOut: true,
+        message: validated.message,
+      };
+    }
+
+    return {
+      room: validated.room,
+      session: validated.session,
+      booking: validated.booking,
+      alreadyCheckedOut: false,
+    };
+  }
+
+  /**
+   * Process QR Check-out (Confirm & persist + send WhatsApp/Email notifications)
+   */
+  async checkout({ qrToken, bookingId, userId, userRole }) {
+    const validated = await this.validateCheckout({
+      qrToken,
+      bookingId,
+      userId,
+      userRole,
+    });
+
+    if (validated.isIdempotent) {
+      return validated;
+    }
+
+    const { room, session } = validated;
     const now = new Date();
 
     const result = await prisma.$transaction(async (tx) => {
