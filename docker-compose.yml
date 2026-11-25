@@ -55,8 +55,8 @@ services:
       test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:5000/health"]
       interval: 10s
       timeout: 5s
-      retries: 5
-      start_period: 60s
+      retries: 10
+      start_period: 120s
 
   notification-worker:
     build:
@@ -66,7 +66,7 @@ services:
     restart: always
     depends_on:
       backend:
-        condition: service_healthy
+        condition: service_started
     environment:
       NODE_ENV: production
       DATABASE_URL: postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-CemindoPlantBatam2026!}@postgres:5432/${POSTGRES_DB:-mrms_db}?schema=public
@@ -100,7 +100,7 @@ services:
     restart: always
     depends_on:
       backend:
-        condition: service_healthy
+        condition: service_started
     environment:
       NODE_ENV: production
       DATABASE_URL: postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-CemindoPlantBatam2026!}@postgres:5432/${POSTGRES_DB:-mrms_db}?schema=public
@@ -125,7 +125,7 @@ services:
       - "${WEB_PORT:-8080}:80"
     depends_on:
       backend:
-        condition: service_healthy
+        condition: service_started
     networks:
       - mrms_network
     healthcheck:
