@@ -29,6 +29,8 @@ export default function CameraQRScanner({ onScanSuccess, mode = 'checkin', onClo
   const html5QrCodeRef = useRef(null);
   const fileInputRef = useRef(null);
   const isStoppingRef = useRef(false);
+  const isStartingRef = useRef(false);
+  const isMountedRef = useRef(true);
 
   const [isScanning, setIsScanning] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
@@ -51,12 +53,41 @@ export default function CameraQRScanner({ onScanSuccess, mode = 'checkin', onClo
         isStoppingRef.current = false;
       }
     }
-    setIsScanning(false);
+    if (isMountedRef.current) {
+      setIsScanning(false);
+    }
   };
 
-  const startScanningWithCamera = async (cameraIdOrFacing) => {
-    setErrorMsg('');
+  const enumerateCamerasSafely = async () => {
     try {
+      const devices = await Html5Qrcode.getCameras();
+      if (isMountedRef.current && devices && devices.length > 0) {
+        setCameras(devices);
+        const backCam = devices.find(
+          (c) =>
+            c.label.toLowerCase().includes('back') ||
+            c.label.toLowerCase().includes('rear') ||
+            c.label.toLowerCase().includes('environment')
+        );
+        setSelectedCameraId((prev) => prev || (backCam ? backCam.id : devices[0].id));
+      }
+      return devices || [];
+    } catch {
+      return [];
+    }
+  };
+
+  const startScanningWithCamera = async (cameraIdOrFacing, isRetry = false) => {
+    if (isStartingRef.current || !isMountedRef.current) return;
+    isStartingRef.current = true;
+    setErrorMsg('');
+
+    try {
+      await stopScanning();
+      // Small delay to ensure mobile OS releases previous camera hardware lock
+      await new Promise((r) => setTimeout(r, 200));
+      if (!isMountedRef.current) return;
+
       if (!html5QrCodeRef.current) {
         html5QrCodeRef.current = new Html5Qrcode(scannerContainerId, {
           formatsToSupport: [Html5QrcodeSupportedFormats.QR_CODE],
@@ -64,12 +95,8 @@ export default function CameraQRScanner({ onScanSuccess, mode = 'checkin', onClo
         });
       }
 
-      if (html5QrCodeRef.current.isScanning) {
-        await html5QrCodeRef.current.stop();
-      }
-
       const config = {
-        fps: 15,
+        fps: 12,
         qrbox: (viewfinderWidth, viewfinderHeight) => {
           const minDim = Math.min(viewfinderWidth, viewfinderHeight);
           const edgeSize = Math.max(120, Math.floor(minDim * 0.72));
@@ -84,7 +111,7 @@ export default function CameraQRScanner({ onScanSuccess, mode = 'checkin', onClo
         config,
         async (decodedText) => {
           const cleanToken = extractCleanToken(decodedText);
-          setScannedResult(cleanToken);
+          if (isMountedRef.current) setScannedResult(cleanToken);
 
           if (navigator.vibrate) {
             try {
@@ -102,49 +129,65 @@ export default function CameraQRScanner({ onScanSuccess, mode = 'checkin', onClo
         }
       );
 
-      setIsScanning(true);
+      if (isMountedRef.current) {
+        setIsScanning(true);
+        // Enumerate cameras ONLY after stream is open to avoid hardware lock contention
+        if (cameras.length === 0) {
+          enumerateCamerasSafely();
+        }
+      }
     } catch (err) {
       console.error('Camera startup error:', err);
+      const errStr = String(err?.name || err?.message || err);
+
+      // Automatic fallback if facingMode: environment fails with NotReadableError / OverconstrainedError
+      if (
+        !isRetry &&
+        (err?.name === 'NotReadableError' ||
+          err?.name === 'OverconstrainedError' ||
+          errStr.includes('NotReadableError') ||
+          errStr.includes('Could not start video source'))
+      ) {
+        isStartingRef.current = false;
+        await new Promise((r) => setTimeout(r, 400));
+        const devices = await enumerateCamerasSafely();
+        if (devices.length > 0 && isMountedRef.current) {
+          const fallbackCam =
+            devices.find((c) => /back|rear|environment/i.test(c.label)) || devices[0];
+          setSelectedCameraId(fallbackCam.id);
+          return startScanningWithCamera(fallbackCam.id, true);
+        }
+      }
+
+      if (!isMountedRef.current) return;
       let msg = t('Gagal mengakses kamera.');
-      if (err.name === 'NotAllowedError' || String(err).includes('Permission')) {
-        msg = t('Izin kamera ditolak. Harap izinkan akses kamera pada browser Anda.');
-      } else if (err.name === 'NotFoundError' || String(err).includes('device not found')) {
+      if (err?.name === 'NotAllowedError' || errStr.includes('Permission')) {
+        msg = t('Izin kamera ditolak. Harap izinkan akses kamera pada pengaturan browser Anda.');
+      } else if (err?.name === 'NotFoundError' || errStr.includes('device not found')) {
         msg = t('Tidak ditemukan perangkat kamera pada perangkat ini.');
+      } else if (err?.name === 'NotReadableError' || errStr.includes('NotReadableError') || errStr.includes('Could not start video source')) {
+        msg = t('Kamera sedang digunakan aplikasi lain atau belum siap. Tutup aplikasi kamera lain lalu tekan "Coba Lagi", atau gunakan "Unggah Foto QR".');
       } else {
-        msg = err.message || String(err);
+        msg = err?.message || String(err);
       }
       setErrorMsg(msg);
       setIsScanning(false);
+    } finally {
+      isStartingRef.current = false;
     }
   };
 
   useEffect(() => {
-    // Start directly with environment (rear) camera
-    startScanningWithCamera({ facingMode: 'environment' });
-
-    // Enumerate cameras after prompt
-    Html5Qrcode.getCameras()
-      .then((devices) => {
-        if (devices && devices.length > 0) {
-          setCameras(devices);
-          const backCam = devices.find(
-            (c) =>
-              c.label.toLowerCase().includes('back') ||
-              c.label.toLowerCase().includes('rear') ||
-              c.label.toLowerCase().includes('environment')
-          );
-          if (backCam) {
-            setSelectedCameraId(backCam.id);
-          } else {
-            setSelectedCameraId(devices[0].id);
-          }
-        }
-      })
-      .catch(() => {
-        // camera enumeration silently ignored if permission requested on start
-      });
+    isMountedRef.current = true;
+    const timer = setTimeout(() => {
+      if (isMountedRef.current) {
+        startScanningWithCamera({ facingMode: 'environment' });
+      }
+    }, 100);
 
     return () => {
+      isMountedRef.current = false;
+      clearTimeout(timer);
       stopScanning();
     };
   }, []);

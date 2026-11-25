@@ -40,8 +40,8 @@ export const PERMISSION_GROUPS = [
       { id: 'booking:reschedule_own', name: 'Reschedule Booking Sendiri', desc: 'Menggeser jadwal booking milik sendiri sebelum waktu check-in' },
       { id: 'booking:extend_own', name: 'Perpanjang Waktu (Extend) Sendiri', desc: 'Memperpanjang durasi meeting sendiri yang sedang berlangsung' },
       { id: 'booking:cancel_own', name: 'Batalkan Booking Sendiri', desc: 'Membatalkan jadwal booking milik sendiri' },
-      { id: 'booking:edit_any', name: 'Edit Booking Siapapun (Admin Mode)', desc: 'Mengubah judul, ruangan, waktu, peserta, status booking milik siapapun' },
-      { id: 'booking:delete_any', name: 'Hapus Booking (Admin Mode)', desc: 'Menghapus permanen data reservasi siapapun dari sistem' },
+      { id: 'booking:edit_any', name: 'Edit Jadwal Reservasi Siapapun (Semua Reservasi)', desc: 'Mengubah judul, ruangan, jadwal waktu, peserta, dan status booking milik siapapun di menu Semua Reservasi' },
+      { id: 'booking:delete_any', name: 'Hapus Reservasi Siapapun (Semua Reservasi)', desc: 'Menghapus permanen data reservasi siapapun dari sistem di menu Semua Reservasi' },
     ],
   },
   {
