@@ -4,6 +4,13 @@ const bcrypt = require('bcryptjs');
 const prisma = new PrismaClient();
 
 async function resetAdmin() {
+  console.log('Memeriksa struktur database...');
+
+  // Ensure missing columns exist in PostgreSQL
+  await prisma.$executeRawUnsafe(`ALTER TABLE "users" ADD COLUMN IF NOT EXISTS "username" TEXT;`);
+  await prisma.$executeRawUnsafe(`CREATE UNIQUE INDEX IF NOT EXISTS "users_username_key" ON "users"("username");`);
+  await prisma.$executeRawUnsafe(`ALTER TABLE "meeting_rooms" ADD COLUMN IF NOT EXISTS "photos" TEXT[] DEFAULT ARRAY[]::TEXT[];`);
+
   const defaultPassword = process.env.ADMIN_DEFAULT_PASSWORD || 'Password123!';
   const hash = await bcrypt.hash(defaultPassword, 10);
 
@@ -23,6 +30,7 @@ async function resetAdmin() {
     user = await prisma.user.update({
       where: { id: user.id },
       data: {
+        username: user.username || 'admin',
         passwordHash: hash,
         isActive: true,
         role: 'ADMIN',
