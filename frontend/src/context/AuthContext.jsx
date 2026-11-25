@@ -19,7 +19,7 @@ export const AuthProvider = ({ children }) => {
     try {
       const saved = localStorage.getItem('mrms_theme');
       if (saved) return saved;
-      return window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+      return 'light';
     } catch {
       return 'light';
     }
