@@ -95,7 +95,7 @@ class RoomUsageService {
       throw { statusCode: 400, message: `Ruangan '${room.name}' sedang dinonaktifkan.` };
     }
 
-    // 2. Find eligible booking if not already loaded from bookingCode
+    // 2. Find eligible booking(s) if not already loaded from bookingCode
     if (!booking) {
       if (bookingId) {
         booking = await prisma.booking.findUnique({
@@ -106,19 +106,36 @@ class RoomUsageService {
           throw { statusCode: 400, message: 'Booking yang dipilih tidak sesuai dengan ruangan QR ini.' };
         }
       } else {
-        // Find current or upcoming booking for this user in this room
-        booking = await prisma.booking.findFirst({
+        // Find ALL today's upcoming/active bookings for this user (or all users if Admin/HRGA) in this room
+        const wibDateStr = formatWIB(now, 'yyyy-MM-dd');
+        const endOfTodayWIB = new Date(`${wibDateStr}T23:59:59+07:00`);
+
+        const todaysBookings = await prisma.booking.findMany({
           where: {
             roomId: room.id,
             userId: userRole === 'EMPLOYEE' ? userId : undefined,
             status: { in: ['CONFIRMED', 'CHECKED_IN', 'NO_SHOW_PENDING'] },
-            // Window: scheduled start - 30m up to scheduled end
-            startTime: { lte: new Date(now.getTime() + 30 * 60 * 1000) },
+            startTime: { lte: endOfTodayWIB },
             endTime: { gte: now },
           },
           orderBy: { startTime: 'asc' },
           include: { room: true, user: { include: { department: true } }, usageSession: true },
         });
+
+        // If previewing and user has >1 meeting today in this room, let them pick which agenda to check in to
+        if (!mutateLateStatus && todaysBookings.length > 1) {
+          return {
+            room,
+            bookings: todaysBookings,
+            requiresSelection: true,
+            now,
+            isIdempotent: false,
+          };
+        }
+
+        if (todaysBookings.length >= 1) {
+          booking = todaysBookings[0];
+        }
       }
     }
 
@@ -141,28 +158,28 @@ class RoomUsageService {
         };
       }
 
-      // Check if user has an upcoming booking today in this room
-      const futureToday = await prisma.booking.findFirst({
+      // Check if user has an upcoming booking on a future day in this room
+      const futureBooking = await prisma.booking.findFirst({
         where: {
           roomId: room.id,
           userId: userRole === 'EMPLOYEE' ? userId : undefined,
           status: 'CONFIRMED',
-          startTime: { gt: new Date(now.getTime() + 30 * 60 * 1000) },
+          startTime: { gt: now },
         },
         orderBy: { startTime: 'asc' },
       });
 
-      if (futureToday) {
-        const timeStr = new Date(futureToday.startTime).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' });
+      if (futureBooking) {
+        const timeStr = formatWIB(futureBooking.startTime, 'dd MMM yyyy, HH:mm');
         throw {
           statusCode: 400,
-          message: `Check-in belum dibuka. Anda memiliki reservasi '${futureToday.title}' pada pukul ${timeStr} WIB. Check-in dapat dilakukan maksimal 30 menit sebelum jadwal.`,
+          message: `Check-in belum dibuka. Anda memiliki reservasi '${futureBooking.title}' pada ${timeStr} WIB. Check-in hanya dapat dilakukan pada hari jadwal rapat.`,
         };
       }
 
       throw {
         statusCode: 404,
-        message: `Tidak ditemukan reservasi aktif untuk ruangan '${room.name}' pada jam sekarang. Silakan buat reservasi baru terlebih dahulu.`,
+        message: `Tidak ditemukan reservasi aktif untuk ruangan '${room.name}' pada hari ini. Silakan buat reservasi baru terlebih dahulu.`,
       };
     }
 
@@ -182,6 +199,22 @@ class RoomUsageService {
         room,
         isIdempotent: true,
         message: 'Anda sudah berhasil check-in sebelumnya.',
+      };
+    }
+
+    // Ensure room does not have another ACTIVE session currently running
+    const activeSessionOther = await prisma.roomUsageSession.findFirst({
+      where: {
+        roomId: room.id,
+        status: { in: ['ACTIVE', 'OVERDUE'] },
+        bookingId: { not: booking.id },
+      },
+      include: { booking: { include: { user: true } } },
+    });
+    if (activeSessionOther) {
+      throw {
+        statusCode: 409,
+        message: `Ruangan '${room.name}' saat ini masih digunakan oleh ${activeSessionOther.booking?.user?.name || 'pengguna lain'} (${activeSessionOther.booking?.title || '-'}) yang belum melakukan Check-Out.`,
       };
     }
 
@@ -207,19 +240,21 @@ class RoomUsageService {
         });
       }
 
+      const lateStr = formatWIB(lateCutoff, 'HH:mm');
       throw {
         statusCode: 400,
-        message: `Check-in ditolak! Batas toleransi keterlambatan (+${lateToleranceMinutes} menit) telah berakhir pada ${lateCutoff.toLocaleTimeString()} WIB. Silakan lakukan Reschedule jadwal terlebih dahulu.`,
+        message: `Check-in ditolak! Batas toleransi keterlambatan (+${lateToleranceMinutes} menit) telah berakhir pada ${lateStr} WIB. Silakan lakukan Reschedule jadwal terlebih dahulu.`,
         needsReschedule: true,
       };
     }
 
-    // Early arrival boundary: max 30 minutes before
-    const earlyAllowed = new Date(scheduledStart.getTime() - 30 * 60 * 1000);
-    if (now < earlyAllowed) {
+    // Allow check-in any time on the scheduled day (WIB) so swapped meetings in the same day work smoothly
+    const bookingDayWIB = formatWIB(scheduledStart, 'yyyy-MM-dd');
+    const todayWIB = formatWIB(now, 'yyyy-MM-dd');
+    if (bookingDayWIB > todayWIB) {
       throw {
         statusCode: 400,
-        message: 'Check-in belum dapat dilakukan. Pintu ruangan dibuka maksimal 30 menit sebelum jadwal mulai.',
+        message: `Check-in belum dapat dilakukan. Jadwal meeting ini adalah pada tanggal ${formatWIB(scheduledStart, 'dd MMM yyyy, HH:mm')} WIB.`,
       };
     }
 
@@ -248,9 +283,19 @@ class RoomUsageService {
       };
     }
 
+    if (validated.requiresSelection) {
+      return {
+        room: validated.room,
+        bookings: validated.bookings,
+        requiresSelection: true,
+        alreadyCheckedIn: false,
+      };
+    }
+
     return {
       room: validated.room,
       booking: validated.booking,
+      requiresSelection: false,
       alreadyCheckedIn: false,
     };
   }

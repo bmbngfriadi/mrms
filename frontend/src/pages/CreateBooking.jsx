@@ -4,7 +4,7 @@ import { useAuth } from '../context/AuthContext';
 import { useI18n } from '../context/I18nContext';
 import { useModal } from '../context/ModalContext';
 import api from '../services/api';
-import { PlusCircle, Calendar, Clock, Users, AlertCircle, CheckCircle2, ArrowLeft, Coffee, CupSoda, ListPlus } from 'lucide-react';
+import { PlusCircle, Calendar, Clock, Users, AlertCircle, CheckCircle2, ArrowLeft, Coffee, CupSoda, Droplets, ListPlus } from 'lucide-react';
 
 export default function CreateBooking() {
   const { user } = useAuth();
@@ -27,6 +27,7 @@ export default function CreateBooking() {
   const [notes, setNotes] = useState('');
   const [needCoffee, setNeedCoffee] = useState(false);
   const [needTea, setNeedTea] = useState(false);
+  const [needWater, setNeedWater] = useState(false);
   const [needOthers, setNeedOthers] = useState(false);
   const [othersText, setOthersText] = useState('');
 
@@ -94,6 +95,7 @@ export default function CreateBooking() {
     const requirements = [];
     if (needCoffee) requirements.push('Kopi');
     if (needTea) requirements.push('Teh');
+    if (needWater) requirements.push('Air Putih');
     if (needOthers && othersText.trim()) {
       requirements.push(othersText.trim());
     } else if (needOthers) {
@@ -292,10 +294,10 @@ export default function CreateBooking() {
         {/* Kebutuhan / Konsumsi Checklist */}
         <div className="space-y-2.5 pt-1">
           <label className="label">{t('Kebutuhan Konsumsi & Tambahan (Opsional)')}</label>
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
             {/* Kopi */}
             <label
-              className={`flex items-center gap-3 p-3 rounded-xl border cursor-pointer transition-all min-h-[44px] select-none ${
+              className={`flex items-center gap-2.5 p-3 rounded-xl border cursor-pointer transition-all min-h-[44px] select-none ${
                 needCoffee
                   ? 'border-brand-500 bg-brand-50/40 dark:bg-brand-950/30 text-brand-700 dark:text-brand-300'
                   : 'border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 hover:border-slate-300 dark:hover:border-slate-700'
@@ -313,7 +315,7 @@ export default function CreateBooking() {
 
             {/* Teh */}
             <label
-              className={`flex items-center gap-3 p-3 rounded-xl border cursor-pointer transition-all min-h-[44px] select-none ${
+              className={`flex items-center gap-2.5 p-3 rounded-xl border cursor-pointer transition-all min-h-[44px] select-none ${
                 needTea
                   ? 'border-brand-500 bg-brand-50/40 dark:bg-brand-950/30 text-brand-700 dark:text-brand-300'
                   : 'border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 hover:border-slate-300 dark:hover:border-slate-700'
@@ -329,9 +331,27 @@ export default function CreateBooking() {
               <span className="text-xs font-bold">{t('Teh')}</span>
             </label>
 
+            {/* Air Putih */}
+            <label
+              className={`flex items-center gap-2.5 p-3 rounded-xl border cursor-pointer transition-all min-h-[44px] select-none ${
+                needWater
+                  ? 'border-brand-500 bg-brand-50/40 dark:bg-brand-950/30 text-brand-700 dark:text-brand-300'
+                  : 'border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 hover:border-slate-300 dark:hover:border-slate-700'
+              }`}
+            >
+              <input
+                type="checkbox"
+                checked={needWater}
+                onChange={(e) => setNeedWater(e.target.checked)}
+                className="w-4 h-4 accent-[#b52025] rounded shrink-0 cursor-pointer"
+              />
+              <Droplets size={16} className="shrink-0 text-sky-500 dark:text-sky-400" />
+              <span className="text-xs font-bold">{t('Air Putih')}</span>
+            </label>
+
             {/* Others */}
             <label
-              className={`flex items-center gap-3 p-3 rounded-xl border cursor-pointer transition-all min-h-[44px] select-none ${
+              className={`flex items-center gap-2.5 p-3 rounded-xl border cursor-pointer transition-all min-h-[44px] select-none ${
                 needOthers
                   ? 'border-brand-500 bg-brand-50/40 dark:bg-brand-950/30 text-brand-700 dark:text-brand-300'
                   : 'border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 hover:border-slate-300 dark:hover:border-slate-700'
@@ -344,7 +364,7 @@ export default function CreateBooking() {
                 className="w-4 h-4 accent-[#b52025] rounded shrink-0 cursor-pointer"
               />
               <ListPlus size={16} className="shrink-0 text-brand-500" />
-              <span className="text-xs font-bold">{t('Others (Lainnya)')}</span>
+              <span className="text-xs font-bold">{t('Others')}</span>
             </label>
           </div>
 

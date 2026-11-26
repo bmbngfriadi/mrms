@@ -83,9 +83,11 @@ export default function CameraQRScanner({ onScanSuccess, mode = 'checkin', onClo
     setErrorMsg('');
 
     try {
-      await stopScanning();
-      // Small delay to ensure mobile OS releases previous camera hardware lock
-      await new Promise((r) => setTimeout(r, 200));
+      // Only stop if actively scanning to preserve iOS Safari user-gesture activation
+      if (html5QrCodeRef.current && html5QrCodeRef.current.isScanning) {
+        await stopScanning();
+        await new Promise((r) => setTimeout(r, 150));
+      }
       if (!isMountedRef.current) return;
 
       if (!html5QrCodeRef.current) {
@@ -128,6 +130,23 @@ export default function CameraQRScanner({ onScanSuccess, mode = 'checkin', onClo
           // Frame error (normal when QR not yet recognized)
         }
       );
+
+      // iOS Safari / iPhone PWA safeguard: explicitly ensure playsInline, muted, autoplay & play()
+      try {
+        const container = document.getElementById(scannerContainerId);
+        const videoEl = container?.querySelector('video');
+        if (videoEl) {
+          videoEl.setAttribute('playsinline', 'true');
+          videoEl.setAttribute('webkit-playsinline', 'true');
+          videoEl.setAttribute('muted', 'true');
+          videoEl.setAttribute('autoplay', 'true');
+          videoEl.playsInline = true;
+          videoEl.muted = true;
+          if (videoEl.paused) {
+            videoEl.play().catch(() => {});
+          }
+        }
+      } catch {}
 
       if (isMountedRef.current) {
         setIsScanning(true);
@@ -179,15 +198,11 @@ export default function CameraQRScanner({ onScanSuccess, mode = 'checkin', onClo
 
   useEffect(() => {
     isMountedRef.current = true;
-    const timer = setTimeout(() => {
-      if (isMountedRef.current) {
-        startScanningWithCamera({ facingMode: 'environment' });
-      }
-    }, 100);
+    // Start immediately on mount (critical for iOS Safari user-gesture video activation)
+    startScanningWithCamera({ facingMode: 'environment' });
 
     return () => {
       isMountedRef.current = false;
-      clearTimeout(timer);
       stopScanning();
     };
   }, []);

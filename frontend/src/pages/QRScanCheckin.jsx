@@ -168,6 +168,67 @@ export default function QRScanCheckin() {
             </Link>
           </div>
         </div>
+      ) : previewData?.requiresSelection ? (
+        <div className="card p-6 border-brand-500/50 shadow-md space-y-4 animate-in zoom-in-95">
+          <div className="text-center space-y-1.5">
+            <div className="w-12 h-12 rounded-2xl bg-brand-50 dark:bg-brand-950/40 text-brand-600 border border-brand-200 dark:border-brand-800 flex items-center justify-center mx-auto">
+              <Calendar size={24} />
+            </div>
+            <h2 className="text-base sm:text-lg font-black text-slate-800 dark:text-white">
+              {t('Pilih Agenda Meeting untuk Check-In')}
+            </h2>
+            <p className="text-xs text-slate-500">
+              {previewData.room?.name} &bull; {t('Terdapat beberapa jadwal reservasi hari ini. Pilih agenda yang akan dimulai sekarang:')}
+            </p>
+          </div>
+
+          <div className="space-y-2.5">
+            {(previewData.bookings || []).map((b) => (
+              <button
+                key={b.id}
+                type="button"
+                onClick={() =>
+                  setPreviewData({
+                    room: previewData.room,
+                    booking: b,
+                    qrToken: previewData.qrToken,
+                    requiresSelection: false,
+                  })
+                }
+                className="w-full text-left p-3.5 rounded-xl border border-slate-200 dark:border-slate-700 hover:border-emerald-500 hover:bg-emerald-50/40 dark:hover:bg-emerald-950/20 transition space-y-1.5 cursor-pointer"
+              >
+                <div className="flex items-center justify-between gap-2">
+                  <span className="font-mono text-[10px] font-bold text-brand-600 dark:text-brand-400">
+                    {b.bookingCode}
+                  </span>
+                  <span className="text-[11px] font-bold text-emerald-700 dark:text-emerald-400">
+                    {new Date(b.startTime).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Jakarta' })} –{' '}
+                    {new Date(b.endTime).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Jakarta' })} WIB
+                  </span>
+                </div>
+                <div className="font-bold text-sm text-slate-800 dark:text-white">{b.title}</div>
+                <div className="text-[11px] text-slate-500 flex items-center justify-between">
+                  <span>{b.user?.name} ({b.user?.department?.name || '-'})</span>
+                  <span className="text-emerald-600 font-bold flex items-center gap-1">
+                    {t('Pilih')} <ArrowRight size={12} />
+                  </span>
+                </div>
+              </button>
+            ))}
+          </div>
+
+          <button
+            type="button"
+            onClick={() => {
+              setPreviewData(null);
+              setQrToken('');
+              navigate('/scan/checkin', { replace: true });
+            }}
+            className="w-full btn btn-ghost text-xs"
+          >
+            {t('Batal / Scan QR Lain')}
+          </button>
+        </div>
       ) : previewData ? (
         <div className="card p-6 border-emerald-500/60 shadow-md space-y-5 animate-in zoom-in-95">
           <div className="text-center space-y-2">
@@ -212,8 +273,8 @@ export default function QRScanCheckin() {
               <span className="text-slate-500 shrink-0">{t('Jadwal')}:</span>
               <span className="font-bold text-slate-800 dark:text-white text-right flex items-center gap-1">
                 <Clock size={13} className="text-emerald-600" />
-                {new Date(previewData.booking?.startTime).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })} –{' '}
-                {new Date(previewData.booking?.endTime).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })} WIB
+                {new Date(previewData.booking?.startTime).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Jakarta' })} –{' '}
+                {new Date(previewData.booking?.endTime).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Jakarta' })} WIB
               </span>
             </div>
             {previewData.booking?.notes && (
