@@ -190,8 +190,13 @@ export default function CameraQRScanner({ onScanSuccess, mode = 'checkin', onClo
           const bestCam = pickBestRearCamera(devices);
           if (bestCam && !/triple/i.test(bestCam.label || '')) {
             setSelectedCameraId(bestCam.id);
-            isStartingRef.current = false;
-            return startScanningWithCamera(bestCam.id, true);
+            await stopScanning();
+            await new Promise((r) => setTimeout(r, 350));
+            if (isMountedRef.current) {
+              isStartingRef.current = false;
+              await startScanningWithCamera(bestCam.id, true);
+            }
+            return;
           }
         }
       }
@@ -268,30 +273,8 @@ export default function CameraQRScanner({ onScanSuccess, mode = 'checkin', onClo
       observer.observe(container, { childList: true, subtree: true });
     }
 
-    // Check if browser already has camera labels cached (permission previously granted) to pick standard Back Camera directly
-    (async () => {
-      try {
-        if (navigator.mediaDevices?.enumerateDevices) {
-          const allDevs = await navigator.mediaDevices.enumerateDevices();
-          const videoDevs = allDevs
-            .filter((d) => d.kind === 'videoinput' && d.label)
-            .map((d) => ({ id: d.deviceId, label: d.label }));
-          if (videoDevs.length > 0 && isMountedRef.current) {
-            setCameras(videoDevs);
-            const best = pickBestRearCamera(videoDevs);
-            if (best) {
-              setSelectedCameraId(best.id);
-              startScanningWithCamera(best.id);
-              return;
-            }
-          }
-        }
-      } catch {}
-
-      if (isMountedRef.current) {
-        startScanningWithCamera({ facingMode: 'environment' });
-      }
-    })();
+    // Start synchronously on mount so iOS Safari preserves user-gesture camera activation
+    startScanningWithCamera({ facingMode: 'environment' });
 
     return () => {
       isMountedRef.current = false;
