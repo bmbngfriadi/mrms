@@ -18,9 +18,11 @@ export default function HRGAReports() {
   const [startDate, setStartDate] = useState(() => {
     const d = new Date();
     d.setDate(d.getDate() - 30);
-    return d.toISOString().split('T')[0];
+    return new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Jakarta' }).format(d);
   });
-  const [endDate, setEndDate] = useState(() => new Date().toISOString().split('T')[0]);
+  const [endDate, setEndDate] = useState(() =>
+    new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Jakarta' }).format(new Date())
+  );
 
   const [utilizationData, setUtilizationData] = useState(null);
   const [departmentData, setDepartmentData] = useState([]);
@@ -208,7 +210,12 @@ export default function HRGAReports() {
                 <div className="space-y-1 text-[11px] text-slate-500 pt-2 border-t border-slate-100 dark:border-slate-800">
                   <div className="flex justify-between">
                     <span>{t('Penggunaan Aktual')}:</span>
-                    <strong className="text-slate-700 dark:text-slate-200">{r.actualUsageHours} {t('Jam')}</strong>
+                    <strong className="text-slate-700 dark:text-slate-200">
+                      {r.actualUsageHours} {t('Jam')}
+                      {r.actualUsageMinutes > 0 && r.actualUsageHours < 1 && (
+                        <span className="text-slate-400 font-normal ml-1">({r.actualUsageMinutes} {t('Menit')})</span>
+                      )}
+                    </strong>
                   </div>
                   <div className="flex justify-between">
                     <span>{t('Jam Operasional')}:</span>

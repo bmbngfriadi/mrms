@@ -10,6 +10,26 @@ const whatsappGateway = require('../whatsapp/whatsapp-gateway.service');
 
 const DIVIDER = '─────────────────'; // Exactly 17 chars as per Cemindo Industrial standard
 
+function formatUsageDuration(start, end) {
+  if (!start || !end) return null;
+  const diffMs = new Date(end) - new Date(start);
+  if (Number.isNaN(diffMs) || diffMs < 0) return null;
+
+  const totalMinutes = Math.round(diffMs / 60000);
+  if (totalMinutes <= 0) {
+    if (diffMs > 0) {
+      return `${Math.max(1, Math.round(diffMs / 1000))} detik`;
+    }
+    return '0 menit';
+  }
+
+  const hours = Math.floor(totalMinutes / 60);
+  const mins = totalMinutes % 60;
+  if (hours > 0 && mins > 0) return `${hours} jam ${mins} menit`;
+  if (hours > 0) return `${hours} jam`;
+  return `${totalMinutes} menit`;
+}
+
 class NotificationService {
   constructor() {
     this.mockEmail = new MockEmailProvider();
@@ -123,6 +143,8 @@ class NotificationService {
       startTime,
       endTime,
       actualTime,
+      actualCheckin,
+      actualCheckout,
       reason,
       actorName,
       requirements,
@@ -132,6 +154,10 @@ class NotificationService {
     const startStr = formatWIB(startTime, 'dd MMM yyyy, HH:mm') + ' WIB';
     const endStr = formatWIB(endTime, 'HH:mm') + ' WIB';
     const actualStr = actualTime ? formatWIB(actualTime, 'dd MMM yyyy, HH:mm') + ' WIB' : '-';
+    const checkinStr = actualCheckin ? formatWIB(actualCheckin, 'dd MMM yyyy, HH:mm') + ' WIB' : null;
+    const checkoutStr = actualCheckout ? formatWIB(actualCheckout, 'dd MMM yyyy, HH:mm') + ' WIB' : null;
+    const usageDurationStr =
+      actualCheckin && actualCheckout ? formatUsageDuration(actualCheckin, actualCheckout) : null;
 
     let eventTitle = '';
     let statusEmoji = '📅';
@@ -193,7 +219,10 @@ class NotificationService {
       `📝 *Agenda:* ${title}`,
       `👤 *Pemesan:* ${userName} (${departmentName})`,
       `🗓️ *Jadwal:* ${startStr} – ${endStr}`,
-      actualTime ? `⏱️ *Waktu Aktual:* ${actualStr}` : null,
+      checkinStr ? `🟢 *Jam Check-In:* ${checkinStr}` : null,
+      checkoutStr ? `🔴 *Jam Check-Out:* ${checkoutStr}` : null,
+      usageDurationStr ? `⏳ *Durasi Penggunaan:* ${usageDurationStr}` : null,
+      !checkinStr && !checkoutStr && actualTime ? `⏱️ *Waktu Aktual:* ${actualStr}` : null,
       actorName ? `🛡️ *Petugas / PIC:* ${actorName}` : null,
       requirements ? `☕ *Kebutuhan:* ${requirements}` : null,
       notes ? `💬 *Catatan:* ${notes}` : null,
@@ -237,7 +266,28 @@ class NotificationService {
               <td style="padding: 8px 0; color: #64748b;">Jadwal Rencana</td>
               <td style="padding: 8px 0; font-weight: bold; color: #b52025;">${startStr} s/d ${endStr}</td>
             </tr>
-            ${actualTime
+            ${checkinStr
+        ? `<tr>
+                    <td style="padding: 8px 0; color: #64748b;">Jam Check-In</td>
+                    <td style="padding: 8px 0; font-weight: bold; color: #059669;">${checkinStr}</td>
+                  </tr>`
+        : ''
+      }
+            ${checkoutStr
+        ? `<tr>
+                    <td style="padding: 8px 0; color: #64748b;">Jam Check-Out</td>
+                    <td style="padding: 8px 0; font-weight: bold; color: #b52025;">${checkoutStr}</td>
+                  </tr>`
+        : ''
+      }
+            ${usageDurationStr
+        ? `<tr>
+                    <td style="padding: 8px 0; color: #64748b;">Durasi Penggunaan</td>
+                    <td style="padding: 8px 0; font-weight: bold; color: #0f172a;">${usageDurationStr}</td>
+                  </tr>`
+        : ''
+      }
+            ${!checkinStr && !checkoutStr && actualTime
         ? `<tr>
                     <td style="padding: 8px 0; color: #64748b;">Waktu Aktual</td>
                     <td style="padding: 8px 0; font-weight: bold; color: #0f172a;">${actualStr}</td>

@@ -12,6 +12,38 @@ const { getSystemSettings } = require('../../config/system-settings');
 router.use(authenticate);
 router.use(requirePermission('menu:reports'));
 
+/**
+ * Parse YYYY-MM-DD (or ISO string) into inclusive WIB (+07:00) start/end Date objects.
+ * Prevents endDate = "YYYY-MM-DD" from cutting off bookings after 07:00 WIB.
+ */
+function parseWIBDateRange(startDate, endDate, defaultDays = 30) {
+  const now = new Date();
+  let start;
+  let end;
+
+  if (startDate) {
+    start = startDate.includes('T')
+      ? new Date(startDate)
+      : new Date(`${startDate}T00:00:00.000+07:00`);
+  } else {
+    const wibToday = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Jakarta' }).format(
+      new Date(now.getTime() - defaultDays * 24 * 60 * 60 * 1000)
+    );
+    start = new Date(`${wibToday}T00:00:00.000+07:00`);
+  }
+
+  if (endDate) {
+    end = endDate.includes('T')
+      ? new Date(endDate)
+      : new Date(`${endDate}T23:59:59.999+07:00`);
+  } else {
+    const wibToday = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Jakarta' }).format(now);
+    end = new Date(`${wibToday}T23:59:59.999+07:00`);
+  }
+
+  return { start, end };
+}
+
 // 1. Room Usage Summary & Detailed Table
 router.get('/room-usage', async (req, res, next) => {
   try {
@@ -22,11 +54,11 @@ router.get('/room-usage', async (req, res, next) => {
     if (status) where.status = status;
     if (departmentId) where.user = { departmentId };
 
-    if (startDate && endDate) {
-      where.startTime = {
-        gte: new Date(startDate),
-        lte: new Date(endDate),
-      };
+    if (startDate || endDate) {
+      const { start, end } = parseWIBDateRange(startDate, endDate);
+      where.startTime = {};
+      if (startDate) where.startTime.gte = start;
+      if (endDate) where.startTime.lte = end;
     }
 
     const bookings = await prisma.booking.findMany({
@@ -277,20 +309,23 @@ router.get('/room-utilization', async (req, res, next) => {
     const { startDate, endDate } = req.query;
     const settings = await getSystemSettings();
 
-    const start = startDate ? new Date(startDate) : new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
-    const end = endDate ? new Date(endDate) : new Date();
+    const { start, end } = parseWIBDateRange(startDate, endDate);
 
     const [opStartH, opStartM] = (settings.OPERATIONAL_HOURS_START || '08:00').split(':').map(Number);
     const [opEndH, opEndM] = (settings.OPERATIONAL_HOURS_END || '17:00').split(':').map(Number);
     const dailyOpHours = (opEndH * 60 + opEndM - (opStartH * 60 + opStartM)) / 60;
 
-    // Count weekdays in range
-    let cur = new Date(start);
+    // Count weekdays in WIB range (timezone-independent)
+    const WIB_OFFSET_MS = 7 * 60 * 60 * 1000;
+    const cur = new Date(start.getTime() + WIB_OFFSET_MS);
+    cur.setUTCHours(0, 0, 0, 0);
+    const endWib = new Date(end.getTime() + WIB_OFFSET_MS);
+    endWib.setUTCHours(0, 0, 0, 0);
     let workingDaysCount = 0;
-    while (cur <= end) {
-      const day = cur.getDay();
+    while (cur <= endWib) {
+      const day = cur.getUTCDay();
       if (day >= 1 && day <= 5) workingDaysCount++;
-      cur.setDate(cur.getDate() + 1);
+      cur.setUTCDate(cur.getUTCDate() + 1);
     }
 
     const baseOperationalHours = workingDaysCount * dailyOpHours;
@@ -335,9 +370,10 @@ router.get('/room-utilization', async (req, res, next) => {
         }
       });
 
+      const actualUsageMinutes = Math.round(actualUsageHours * 60);
       const utilizationPercentage = Math.min(
         100,
-        Number(((actualUsageHours / availableOperationalHours) * 100).toFixed(1))
+        Number(((actualUsageHours / availableOperationalHours) * 100).toFixed(2))
       );
 
       return {
@@ -349,7 +385,8 @@ router.get('/room-utilization', async (req, res, next) => {
         baseOperationalHours: Number(baseOperationalHours.toFixed(1)),
         maintenanceHours: Number(maintenanceHours.toFixed(1)),
         availableOperationalHours: Number(availableOperationalHours.toFixed(1)),
-        actualUsageHours: Number(actualUsageHours.toFixed(1)),
+        actualUsageHours: Number(actualUsageHours.toFixed(2)),
+        actualUsageMinutes,
         utilizationPercentage,
       };
     });
@@ -372,9 +409,14 @@ router.get('/room-utilization', async (req, res, next) => {
 router.get('/department-usage', async (req, res, next) => {
   try {
     const { startDate, endDate } = req.query;
-    const where = {};
-    if (startDate && endDate) {
-      where.startTime = { gte: new Date(startDate), lte: new Date(endDate) };
+    const where = {
+      status: { notIn: ['CANCELLED', 'NO_SHOW'] },
+    };
+    if (startDate || endDate) {
+      const { start, end } = parseWIBDateRange(startDate, endDate);
+      where.startTime = {};
+      if (startDate) where.startTime.gte = start;
+      if (endDate) where.startTime.lte = end;
     }
 
     const departments = await prisma.department.findMany({
@@ -399,11 +441,16 @@ router.get('/department-usage', async (req, res, next) => {
         totalBookings += u.bookings.length;
         u.bookings.forEach((b) => {
           totalAttendees += b.attendeesCount || 0;
-          if (b.usageSession?.actualCheckin && b.usageSession?.actualCheckout) {
-            totalUsageMinutes +=
-              (new Date(b.usageSession.actualCheckout) - new Date(b.usageSession.actualCheckin)) / 60000;
+          if (b.usageSession?.actualCheckin) {
+            const checkout = b.usageSession.actualCheckout
+              ? new Date(b.usageSession.actualCheckout)
+              : new Date();
+            totalUsageMinutes += Math.max(
+              0,
+              (checkout - new Date(b.usageSession.actualCheckin)) / 60000
+            );
           } else {
-            totalUsageMinutes += (new Date(b.endTime) - new Date(b.startTime)) / 60000;
+            totalUsageMinutes += Math.max(0, (new Date(b.endTime) - new Date(b.startTime)) / 60000);
           }
         });
       });
@@ -413,7 +460,8 @@ router.get('/department-usage', async (req, res, next) => {
         code: d.code,
         name: d.name,
         totalBookings,
-        totalUsageHours: Number((totalUsageMinutes / 60).toFixed(1)),
+        totalUsageHours: Number((totalUsageMinutes / 60).toFixed(2)),
+        totalUsageMinutes: Math.round(totalUsageMinutes),
         totalAttendees,
       };
     });
