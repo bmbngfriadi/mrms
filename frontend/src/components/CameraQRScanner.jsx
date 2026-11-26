@@ -180,15 +180,16 @@ export default function CameraQRScanner({ onScanSuccess, mode = 'checkin', onClo
         setIsScanning(true);
         const devices = cameras.length === 0 ? await enumerateCamerasSafely() : cameras;
 
-        // If started with facingMode and iOS picked "Back Triple Camera", auto-switch to standard "Back Camera"
+        // If started with facingMode and device list contains iOS Triple/Dual/Ultra Camera, auto-switch to standard "Back Camera"
+        const hasMultiLens = devices.some((d) => /triple|dual|ultra/i.test(d.label || ''));
         if (
           !isRetry &&
           typeof cameraParam === 'object' &&
-          /triple|dual|ultra/i.test(activeTrackLabel) &&
-          devices.length > 1
+          devices.length > 1 &&
+          (hasMultiLens || /triple|dual|ultra/i.test(activeTrackLabel))
         ) {
           const bestCam = pickBestRearCamera(devices);
-          if (bestCam && !/triple/i.test(bestCam.label || '')) {
+          if (bestCam && !/triple|dual|ultra/i.test(bestCam.label || '')) {
             setSelectedCameraId(bestCam.id);
             await stopScanning();
             await new Promise((r) => setTimeout(r, 350));
