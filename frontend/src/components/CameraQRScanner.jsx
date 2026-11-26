@@ -198,11 +198,43 @@ export default function CameraQRScanner({ onScanSuccess, mode = 'checkin', onClo
 
   useEffect(() => {
     isMountedRef.current = true;
+
+    // Watch #mrms-camera-qr-reader for <video> insertion so iOS Safari gets playsInline/muted BEFORE playback starts
+    const container = document.getElementById(scannerContainerId);
+    let observer = null;
+    const applyIosVideoAttrs = (videoEl) => {
+      if (!videoEl) return;
+      videoEl.setAttribute('playsinline', 'true');
+      videoEl.setAttribute('webkit-playsinline', 'true');
+      videoEl.setAttribute('muted', 'true');
+      videoEl.setAttribute('autoplay', 'true');
+      videoEl.playsInline = true;
+      videoEl.muted = true;
+      videoEl.style.width = '100%';
+      videoEl.style.height = '100%';
+      videoEl.style.objectFit = 'cover';
+      videoEl.onloadedmetadata = () => {
+        videoEl.play().catch(() => {});
+      };
+      if (videoEl.paused) {
+        videoEl.play().catch(() => {});
+      }
+    };
+
+    if (container) {
+      observer = new MutationObserver(() => {
+        const videoEl = container.querySelector('video');
+        if (videoEl) applyIosVideoAttrs(videoEl);
+      });
+      observer.observe(container, { childList: true, subtree: true });
+    }
+
     // Start immediately on mount (critical for iOS Safari user-gesture video activation)
     startScanningWithCamera({ facingMode: 'environment' });
 
     return () => {
       isMountedRef.current = false;
+      if (observer) observer.disconnect();
       stopScanning();
     };
   }, []);
@@ -300,24 +332,24 @@ export default function CameraQRScanner({ onScanSuccess, mode = 'checkin', onClo
       )}
 
       {/* Camera Live Viewfinder Container */}
-      <div className="mt-3 relative rounded-xl overflow-hidden bg-black aspect-square max-h-[300px] mx-auto flex items-center justify-center">
+      <div className="mt-3 relative rounded-xl overflow-hidden bg-black w-full aspect-square max-w-[340px] mx-auto">
         <div id={scannerContainerId} className="w-full h-full" />
 
-        {/* Viewfinder Target Overlays */}
+        {/* Viewfinder Target Overlays (Red-only clean frame) */}
         {isScanning && !scannedResult && (
-          <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center">
-            {/* Pulsing Target Box */}
-            <div className="w-[70%] h-[70%] border-2 border-brand-400/80 rounded-2xl relative shadow-[0_0_20px_rgba(181,32,37,0.4)]">
-              {/* Corner Accents */}
-              <div className="absolute -top-1 -left-1 w-5 h-5 border-t-4 border-l-4 border-brand-500 rounded-tl-lg" />
-              <div className="absolute -top-1 -right-1 w-5 h-5 border-t-4 border-r-4 border-brand-500 rounded-tr-lg" />
-              <div className="absolute -bottom-1 -left-1 w-5 h-5 border-b-4 border-l-4 border-brand-500 rounded-bl-lg" />
-              <div className="absolute -bottom-1 -right-1 w-5 h-5 border-b-4 border-r-4 border-brand-500 rounded-br-lg" />
+          <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center p-4">
+            {/* Target Box */}
+            <div className="w-[72%] h-[72%] border-2 border-red-500/80 rounded-2xl relative shadow-[0_0_20px_rgba(181,32,37,0.35)]">
+              {/* Red Corner Accents */}
+              <div className="absolute -top-1 -left-1 w-6 h-6 border-t-4 border-l-4 border-red-500 rounded-tl-xl" />
+              <div className="absolute -top-1 -right-1 w-6 h-6 border-t-4 border-r-4 border-red-500 rounded-tr-xl" />
+              <div className="absolute -bottom-1 -left-1 w-6 h-6 border-b-4 border-l-4 border-red-500 rounded-bl-xl" />
+              <div className="absolute -bottom-1 -right-1 w-6 h-6 border-b-4 border-r-4 border-red-500 rounded-br-xl" />
 
               {/* Scanning Red Line Laser */}
-              <div className="absolute inset-x-2 h-0.5 bg-gradient-to-r from-transparent via-brand-500 to-transparent animate-[bounce_2s_infinite] shadow-[0_0_8px_#b52025]" />
+              <div className="absolute inset-x-3 h-0.5 bg-gradient-to-r from-transparent via-red-500 to-transparent animate-[bounce_2s_infinite] shadow-[0_0_8px_#ef4444]" />
             </div>
-            <div className="mt-4 px-3 py-1 rounded-full bg-black/75 backdrop-blur-xs text-[11px] text-white font-medium border border-white/20">
+            <div className="mt-3 px-3 py-1 rounded-full bg-black/75 backdrop-blur-xs text-[11px] text-white font-medium border border-red-500/30">
               {t('Arahkan kamera ke lembar QR ruangan')}
             </div>
           </div>
@@ -345,12 +377,12 @@ export default function CameraQRScanner({ onScanSuccess, mode = 'checkin', onClo
       />
 
       {/* Camera Selection & Alternative Controls */}
-      <div className="mt-3 flex items-center justify-between gap-2 pt-2 border-t border-slate-800 text-xs">
+      <div className="mt-3 flex flex-wrap items-center justify-between gap-2 pt-3 border-t border-slate-800 text-xs">
         {cameras.length > 1 ? (
           <select
             value={selectedCameraId}
             onChange={handleCameraChange}
-            className="bg-slate-800 border border-slate-700 text-slate-200 text-xs rounded-lg px-2.5 py-1.5 focus:outline-none focus:ring-1 focus:ring-brand-500 max-w-[150px] truncate"
+            className="bg-slate-800 border border-slate-700 text-slate-200 text-xs rounded-xl px-2.5 py-2 focus:outline-none focus:ring-1 focus:ring-brand-500 flex-1 min-w-[130px] truncate"
           >
             {cameras.map((c) => (
               <option key={c.id} value={c.id}>
@@ -359,21 +391,21 @@ export default function CameraQRScanner({ onScanSuccess, mode = 'checkin', onClo
             ))}
           </select>
         ) : (
-          <div className="text-[11px] text-slate-400 flex items-center gap-1">
-            <Zap size={13} className="text-amber-400" />
+          <div className="text-[11px] text-slate-400 flex items-center gap-1.5">
+            <Zap size={13} className="text-amber-400 shrink-0" />
             <span>{t('Kamera Aktif')}</span>
           </div>
         )}
 
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 shrink-0 ml-auto">
           <button
             type="button"
             disabled={fileScanning}
             onClick={() => fileInputRef.current?.click()}
-            className="btn btn-ghost text-xs text-slate-300 hover:text-white py-1 px-2.5 flex items-center gap-1"
+            className="btn bg-slate-800 border border-slate-700 text-slate-200 hover:bg-slate-700 hover:text-white text-xs py-2 px-3 min-h-[38px] whitespace-nowrap"
             title={t('Pindai dari galeri / foto')}
           >
-            <Image size={13} />
+            <Image size={14} className="shrink-0" />
             <span>{fileScanning ? t('Membaca...') : t('Foto QR')}</span>
           </button>
 
@@ -383,7 +415,7 @@ export default function CameraQRScanner({ onScanSuccess, mode = 'checkin', onClo
               await stopScanning();
               if (onClose) onClose();
             }}
-            className="btn btn-ghost text-xs text-slate-400 hover:text-white py-1 px-2.5"
+            className="btn bg-slate-800 border border-slate-700 text-slate-200 hover:bg-slate-700 hover:text-white text-xs py-2 px-3 min-h-[38px] whitespace-nowrap"
           >
             {t('Tutup')}
           </button>
