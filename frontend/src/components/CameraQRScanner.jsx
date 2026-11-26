@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { Html5Qrcode, Html5QrcodeSupportedFormats } from 'html5-qrcode';
+import jsQR from 'jsqr';
 import { Camera, X, RefreshCw, AlertCircle, CheckCircle2, Zap, Image, Upload } from 'lucide-react';
 import { useI18n } from '../context/I18nContext';
 
@@ -9,9 +9,10 @@ export const extractCleanToken = (decodedText) => {
   const trimmed = decodedText.trim();
   if (trimmed.includes('code=') || trimmed.includes('token=')) {
     try {
-      const dummyUrl = trimmed.startsWith('http://') || trimmed.startsWith('https://')
-        ? trimmed
-        : `http://dummy.com/${trimmed.replace(/^\/+/, '')}`;
+      const dummyUrl =
+        trimmed.startsWith('http://') || trimmed.startsWith('https://')
+          ? trimmed
+          : `http://dummy.com/${trimmed.replace(/^\/+/, '')}`;
       const url = new URL(dummyUrl);
       const code = url.searchParams.get('code') || url.searchParams.get('token');
       if (code) return code.trim();
@@ -23,14 +24,44 @@ export const extractCleanToken = (decodedText) => {
   return trimmed;
 };
 
+const pickBestRearCamera = (devices) => {
+  if (!devices || devices.length === 0) return null;
+  // Prefer standard Back Camera (avoid iOS "Back Triple/Dual/Ultra/Telephoto Camera" which often outputs black in WebKit)
+  const standardBack = devices.find((c) => {
+    const lbl = (c.label || '').toLowerCase();
+    const isRear = lbl.includes('back') || lbl.includes('rear') || lbl.includes('environment');
+    const isMultiOrSpecial =
+      lbl.includes('triple') ||
+      lbl.includes('dual') ||
+      lbl.includes('ultra') ||
+      lbl.includes('telephoto') ||
+      lbl.includes('macro');
+    return isRear && !isMultiOrSpecial;
+  });
+  if (standardBack) return standardBack;
+
+  const nonTripleBack = devices.find((c) => {
+    const lbl = (c.label || '').toLowerCase();
+    return (lbl.includes('back') || lbl.includes('rear') || lbl.includes('environment')) && !lbl.includes('triple');
+  });
+  if (nonTripleBack) return nonTripleBack;
+
+  const anyBack = devices.find((c) => {
+    const lbl = (c.label || '').toLowerCase();
+    return lbl.includes('back') || lbl.includes('rear') || lbl.includes('environment');
+  });
+  return anyBack || devices[0];
+};
+
 export default function CameraQRScanner({ onScanSuccess, mode = 'checkin', onClose }) {
   const { t } = useI18n();
-  const scannerContainerId = 'mrms-camera-qr-reader';
-  const html5QrCodeRef = useRef(null);
+  const videoRef = useRef(null);
+  const canvasRef = useRef(null);
+  const streamRef = useRef(null);
+  const scanTimerRef = useRef(null);
   const fileInputRef = useRef(null);
-  const isStoppingRef = useRef(false);
-  const isStartingRef = useRef(false);
   const isMountedRef = useRef(true);
+  const isStartingRef = useRef(false);
 
   const [isScanning, setIsScanning] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
@@ -39,193 +70,166 @@ export default function CameraQRScanner({ onScanSuccess, mode = 'checkin', onClo
   const [scannedResult, setScannedResult] = useState('');
   const [fileScanning, setFileScanning] = useState(false);
 
-  const stopScanning = async () => {
-    if (html5QrCodeRef.current && !isStoppingRef.current) {
-      isStoppingRef.current = true;
+  const stopCamera = () => {
+    if (scanTimerRef.current) {
+      clearInterval(scanTimerRef.current);
+      scanTimerRef.current = null;
+    }
+    if (streamRef.current) {
       try {
-        if (html5QrCodeRef.current.isScanning) {
-          await html5QrCodeRef.current.stop();
-        }
-      } catch (err) {
-        // ignore already stopped warnings
-      } finally {
-        try {
-          if (!html5QrCodeRef.current?.isScanning) {
-            html5QrCodeRef.current?.clear();
-          }
-        } catch {}
-        html5QrCodeRef.current = null;
-        isStoppingRef.current = false;
-      }
+        streamRef.current.getTracks().forEach((track) => track.stop());
+      } catch {}
+      streamRef.current = null;
+    }
+    if (videoRef.current) {
+      try {
+        videoRef.current.srcObject = null;
+      } catch {}
     }
     if (isMountedRef.current) {
       setIsScanning(false);
     }
   };
 
-  const pickBestRearCamera = (devices) => {
-    if (!devices || devices.length === 0) return null;
-    // 1. Prefer standard Back Camera (avoid iOS "Back Triple/Dual/Ultra/Telephoto Camera" which often renders black on Safari)
-    const standardBack = devices.find((c) => {
-      const lbl = (c.label || '').toLowerCase();
-      const isRear = lbl.includes('back') || lbl.includes('rear') || lbl.includes('environment');
-      const isMultiOrSpecial =
-        lbl.includes('triple') ||
-        lbl.includes('dual') ||
-        lbl.includes('ultra') ||
-        lbl.includes('telephoto') ||
-        lbl.includes('macro');
-      return isRear && !isMultiOrSpecial;
-    });
-    if (standardBack) return standardBack;
+  const handleDecoded = (rawText) => {
+    const cleanToken = extractCleanToken(rawText);
+    if (!cleanToken) return;
 
-    // 2. Fallback to any rear camera excluding triple
-    const nonTripleBack = devices.find((c) => {
-      const lbl = (c.label || '').toLowerCase();
-      return (lbl.includes('back') || lbl.includes('rear') || lbl.includes('environment')) && !lbl.includes('triple');
-    });
-    if (nonTripleBack) return nonTripleBack;
-
-    // 3. Fallback to any rear camera or first device
-    const anyBack = devices.find((c) => {
-      const lbl = (c.label || '').toLowerCase();
-      return lbl.includes('back') || lbl.includes('rear') || lbl.includes('environment');
-    });
-    return anyBack || devices[0];
-  };
-
-  const enumerateCamerasSafely = async () => {
-    try {
-      const devices = await Html5Qrcode.getCameras();
-      if (isMountedRef.current && devices && devices.length > 0) {
-        setCameras(devices);
-        const bestCam = pickBestRearCamera(devices);
-        setSelectedCameraId((prev) => prev || (bestCam ? bestCam.id : devices[0].id));
-      }
-      return devices || [];
-    } catch {
-      return [];
+    if (isMountedRef.current) setScannedResult(cleanToken);
+    if (navigator.vibrate) {
+      try {
+        navigator.vibrate(100);
+      } catch {}
+    }
+    stopCamera();
+    if (onScanSuccess) {
+      onScanSuccess(cleanToken);
     }
   };
 
-  const startScanningWithCamera = async (cameraIdOrFacing, isRetry = false) => {
+  const startDecodeLoop = () => {
+    if (scanTimerRef.current) clearInterval(scanTimerRef.current);
+
+    let frameCounter = 0;
+    scanTimerRef.current = setInterval(() => {
+      const video = videoRef.current;
+      const canvas = canvasRef.current;
+      if (!video || !canvas || video.readyState < 2 || video.videoWidth === 0 || video.videoHeight === 0) {
+        return;
+      }
+
+      const vw = video.videoWidth;
+      const vh = video.videoHeight;
+      // Downscale slightly for fast mobile QR decoding while keeping sharp detail
+      const maxEdge = 720;
+      const scale = Math.min(1, maxEdge / Math.max(vw, vh));
+      const w = Math.floor(vw * scale);
+      const h = Math.floor(vh * scale);
+
+      if (canvas.width !== w || canvas.height !== h) {
+        canvas.width = w;
+        canvas.height = h;
+      }
+
+      const ctx = canvas.getContext('2d', { willReadFrequently: true });
+      if (!ctx) return;
+
+      ctx.drawImage(video, 0, 0, w, h);
+      const imageData = ctx.getImageData(0, 0, w, h);
+      frameCounter += 1;
+      const code = jsQR(imageData.data, w, h, {
+        inversionAttempts: frameCounter % 3 === 0 ? 'attemptBoth' : 'dontInvert',
+      });
+
+      if (code && code.data) {
+        handleDecoded(code.data);
+      }
+    }, 120);
+  };
+
+  const startCamera = async (deviceId = '', isFallback = false) => {
     if (isStartingRef.current || !isMountedRef.current) return;
     isStartingRef.current = true;
     setErrorMsg('');
 
     try {
-      // Only stop if actively scanning to preserve iOS Safari user-gesture activation
-      if (html5QrCodeRef.current && html5QrCodeRef.current.isScanning) {
-        await stopScanning();
-        await new Promise((r) => setTimeout(r, 150));
-      }
-      if (!isMountedRef.current) return;
+      stopCamera();
 
-      if (!html5QrCodeRef.current) {
-        html5QrCodeRef.current = new Html5Qrcode(scannerContainerId, {
-          formatsToSupport: [Html5QrcodeSupportedFormats.QR_CODE],
-          verbose: false,
-        });
+      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+        throw new Error(t('Browser ini tidak mendukung akses kamera langsung. Gunakan fitur "Foto QR".'));
       }
 
-      const config = {
-        fps: 12,
-        qrbox: (viewfinderWidth, viewfinderHeight) => {
-          const minDim = Math.min(viewfinderWidth, viewfinderHeight);
-          const edgeSize = Math.max(120, Math.floor(minDim * 0.72));
-          return { width: edgeSize, height: edgeSize };
-        },
-      };
+      const videoConstraints = deviceId
+        ? { deviceId: { exact: deviceId }, width: { ideal: 1280 }, height: { ideal: 720 } }
+        : { facingMode: { ideal: 'environment' }, width: { ideal: 1280 }, height: { ideal: 720 } };
 
-      const cameraParam = cameraIdOrFacing || { facingMode: 'environment' };
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: videoConstraints,
+        audio: false,
+      });
 
-      await html5QrCodeRef.current.start(
-        cameraParam,
-        config,
-        async (decodedText) => {
-          const cleanToken = extractCleanToken(decodedText);
-          if (isMountedRef.current) setScannedResult(cleanToken);
+      if (!isMountedRef.current) {
+        stream.getTracks().forEach((t) => t.stop());
+        return;
+      }
 
-          if (navigator.vibrate) {
-            try {
-              navigator.vibrate(100);
-            } catch {}
-          }
+      streamRef.current = stream;
+      const activeTrack = stream.getVideoTracks()[0];
+      const activeLabel = activeTrack?.label || '';
+      const activeSettingsId = activeTrack?.getSettings?.()?.deviceId || '';
 
-          await stopScanning();
-          if (onScanSuccess) {
-            onScanSuccess(cleanToken);
-          }
-        },
-        () => {
-          // Frame error (normal when QR not yet recognized)
-        }
-      );
+      // Attach stream directly to existing <video playsInline muted autoPlay>
+      if (videoRef.current) {
+        videoRef.current.srcObject = stream;
+        videoRef.current.setAttribute('playsinline', 'true');
+        videoRef.current.setAttribute('webkit-playsinline', 'true');
+        videoRef.current.playsInline = true;
+        videoRef.current.muted = true;
+        await videoRef.current.play().catch(() => {});
+      }
 
-      // iOS Safari / iPhone PWA safeguard: explicitly ensure playsInline, muted, autoplay & play()
-      let activeTrackLabel = '';
+      // Enumerate available video cameras now that permission is granted
+      let deviceList = [];
       try {
-        const container = document.getElementById(scannerContainerId);
-        const videoEl = container?.querySelector('video');
-        if (videoEl) {
-          videoEl.setAttribute('playsinline', 'true');
-          videoEl.setAttribute('webkit-playsinline', 'true');
-          videoEl.setAttribute('muted', 'true');
-          videoEl.setAttribute('autoplay', 'true');
-          videoEl.playsInline = true;
-          videoEl.muted = true;
-          if (videoEl.paused) {
-            videoEl.play().catch(() => {});
-          }
-          activeTrackLabel = videoEl.srcObject?.getVideoTracks?.()[0]?.label || '';
+        const allDevices = await navigator.mediaDevices.enumerateDevices();
+        deviceList = allDevices
+          .filter((d) => d.kind === 'videoinput')
+          .map((d, idx) => ({
+            id: d.deviceId,
+            label: d.label || `Kamera ${idx + 1}`,
+          }));
+        if (isMountedRef.current && deviceList.length > 0) {
+          setCameras(deviceList);
         }
       } catch {}
 
-      if (isMountedRef.current) {
-        setIsScanning(true);
-        const devices = cameras.length === 0 ? await enumerateCamerasSafely() : cameras;
-
-        // If started with facingMode and device list contains iOS Triple/Dual/Ultra Camera, auto-switch to standard "Back Camera"
-        const hasMultiLens = devices.some((d) => /triple|dual|ultra/i.test(d.label || ''));
-        if (
-          !isRetry &&
-          typeof cameraParam === 'object' &&
-          devices.length > 1 &&
-          (hasMultiLens || /triple|dual|ultra/i.test(activeTrackLabel))
-        ) {
-          const bestCam = pickBestRearCamera(devices);
-          if (bestCam && !/triple|dual|ultra/i.test(bestCam.label || '')) {
-            setSelectedCameraId(bestCam.id);
-            await stopScanning();
-            await new Promise((r) => setTimeout(r, 350));
-            if (isMountedRef.current) {
-              isStartingRef.current = false;
-              await startScanningWithCamera(bestCam.id, true);
-            }
-            return;
-          }
+      // If iOS picked "Back Triple Camera" and a plain "Back Camera" exists, switch immediately
+      if (!deviceId && !isFallback && /triple|dual|ultra/i.test(activeLabel) && deviceList.length > 1) {
+        const bestCam = pickBestRearCamera(deviceList);
+        if (bestCam && bestCam.id !== activeSettingsId && !/triple|dual|ultra/i.test(bestCam.label)) {
+          setSelectedCameraId(bestCam.id);
+          isStartingRef.current = false;
+          return startCamera(bestCam.id, true);
         }
+      }
+
+      if (isMountedRef.current) {
+        if (activeSettingsId) {
+          setSelectedCameraId(activeSettingsId);
+        } else if (deviceList.length > 0) {
+          const bestCam = pickBestRearCamera(deviceList);
+          if (bestCam) setSelectedCameraId(bestCam.id);
+        }
+        setIsScanning(true);
+        startDecodeLoop();
       }
     } catch (err) {
       console.error('Camera startup error:', err);
       const errStr = String(err?.name || err?.message || err);
 
-      // Automatic fallback if facingMode: environment fails with NotReadableError / OverconstrainedError
-      if (
-        !isRetry &&
-        (err?.name === 'NotReadableError' ||
-          err?.name === 'OverconstrainedError' ||
-          errStr.includes('NotReadableError') ||
-          errStr.includes('Could not start video source'))
-      ) {
+      if (!isFallback && deviceId) {
         isStartingRef.current = false;
-        await new Promise((r) => setTimeout(r, 400));
-        const devices = await enumerateCamerasSafely();
-        if (devices.length > 0 && isMountedRef.current) {
-          const fallbackCam = pickBestRearCamera(devices);
-          setSelectedCameraId(fallbackCam.id);
-          return startScanningWithCamera(fallbackCam.id, true);
-        }
+        return startCamera('', true);
       }
 
       if (!isMountedRef.current) return;
@@ -235,7 +239,7 @@ export default function CameraQRScanner({ onScanSuccess, mode = 'checkin', onClo
       } else if (err?.name === 'NotFoundError' || errStr.includes('device not found')) {
         msg = t('Tidak ditemukan perangkat kamera pada perangkat ini.');
       } else if (err?.name === 'NotReadableError' || errStr.includes('NotReadableError') || errStr.includes('Could not start video source')) {
-        msg = t('Kamera sedang digunakan aplikasi lain atau belum siap. Tutup aplikasi kamera lain lalu tekan "Coba Lagi", atau gunakan "Unggah Foto QR".');
+        msg = t('Kamera sedang digunakan aplikasi lain atau belum siap. Tekan "Coba Lagi" atau gunakan "Foto QR".');
       } else {
         msg = err?.message || String(err);
       }
@@ -248,51 +252,18 @@ export default function CameraQRScanner({ onScanSuccess, mode = 'checkin', onClo
 
   useEffect(() => {
     isMountedRef.current = true;
-
-    // Watch #mrms-camera-qr-reader for <video> insertion so iOS Safari gets playsInline/muted BEFORE playback starts
-    const container = document.getElementById(scannerContainerId);
-    let observer = null;
-    const applyIosVideoAttrs = (videoEl) => {
-      if (!videoEl) return;
-      videoEl.setAttribute('playsinline', 'true');
-      videoEl.setAttribute('webkit-playsinline', 'true');
-      videoEl.setAttribute('muted', 'true');
-      videoEl.setAttribute('autoplay', 'true');
-      videoEl.playsInline = true;
-      videoEl.muted = true;
-      videoEl.style.width = '100%';
-      videoEl.style.height = '100%';
-      videoEl.style.objectFit = 'cover';
-      videoEl.onloadedmetadata = () => {
-        videoEl.play().catch(() => {});
-      };
-      if (videoEl.paused) {
-        videoEl.play().catch(() => {});
-      }
-    };
-
-    if (container) {
-      observer = new MutationObserver(() => {
-        const videoEl = container.querySelector('video');
-        if (videoEl) applyIosVideoAttrs(videoEl);
-      });
-      observer.observe(container, { childList: true, subtree: true });
-    }
-
-    // Start synchronously on mount so iOS Safari preserves user-gesture camera activation
-    startScanningWithCamera({ facingMode: 'environment' });
+    startCamera();
 
     return () => {
       isMountedRef.current = false;
-      if (observer) observer.disconnect();
-      stopScanning();
+      stopCamera();
     };
   }, []);
 
   const handleCameraChange = (e) => {
     const newId = e.target.value;
     setSelectedCameraId(newId);
-    startScanningWithCamera(newId);
+    startCamera(newId, true);
   };
 
   const handleFileUpload = async (e) => {
@@ -303,26 +274,36 @@ export default function CameraQRScanner({ onScanSuccess, mode = 'checkin', onClo
     setFileScanning(true);
 
     try {
-      await stopScanning();
-      if (!html5QrCodeRef.current) {
-        html5QrCodeRef.current = new Html5Qrcode(scannerContainerId, {
-          formatsToSupport: [Html5QrcodeSupportedFormats.QR_CODE],
-          verbose: false,
-        });
+      const imgUrl = URL.createObjectURL(file);
+      const img = new window.Image();
+      await new Promise((resolve, reject) => {
+        img.onload = resolve;
+        img.onerror = () => reject(new Error('Gagal memuat gambar'));
+        img.src = imgUrl;
+      });
+
+      const canvas = document.createElement('canvas');
+      const maxDim = 1200;
+      const scale = Math.min(1, maxDim / Math.max(img.width, img.height));
+      canvas.width = Math.floor(img.width * scale);
+      canvas.height = Math.floor(img.height * scale);
+      const ctx = canvas.getContext('2d');
+      ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+      URL.revokeObjectURL(imgUrl);
+
+      const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+      const code = jsQR(imageData.data, canvas.width, canvas.height, {
+        inversionAttempts: 'attemptBoth',
+      });
+
+      if (!code || !code.data) {
+        throw new Error('QR tidak terdeteksi');
       }
 
-      const decodedText = await html5QrCodeRef.current.scanFile(file, true);
-      const cleanToken = extractCleanToken(decodedText);
-      setScannedResult(cleanToken);
-
-      if (onScanSuccess) {
-        onScanSuccess(cleanToken);
-      }
+      handleDecoded(code.data);
     } catch (err) {
       console.error('File scan error:', err);
       setErrorMsg(t('Tidak dapat mendeteksi kode QR dari gambar yang diunggah. Pastikan gambar jelas dan tidak buram.'));
-      // Resume camera
-      startScanningWithCamera(selectedCameraId || { facingMode: 'environment' });
     } finally {
       setFileScanning(false);
       if (fileInputRef.current) fileInputRef.current.value = '';
@@ -331,6 +312,9 @@ export default function CameraQRScanner({ onScanSuccess, mode = 'checkin', onClo
 
   return (
     <div className="bg-slate-900 rounded-2xl p-4 text-white shadow-2xl relative overflow-hidden border border-slate-700 animate-in fade-in zoom-in-95">
+      {/* Offscreen Canvas for QR Decoding */}
+      <canvas ref={canvasRef} className="hidden" />
+
       {/* Top Header */}
       <div className="flex items-center justify-between pb-3 border-b border-slate-800">
         <div className="flex items-center gap-2">
@@ -341,8 +325,8 @@ export default function CameraQRScanner({ onScanSuccess, mode = 'checkin', onClo
         </div>
         <button
           type="button"
-          onClick={async () => {
-            await stopScanning();
+          onClick={() => {
+            stopCamera();
             if (onClose) onClose();
           }}
           className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition"
@@ -359,11 +343,11 @@ export default function CameraQRScanner({ onScanSuccess, mode = 'checkin', onClo
           <div className="flex-1">
             <div className="font-bold">{t('Akses Kamera / Pemindaian')}</div>
             <div className="text-[11px] opacity-90">{errorMsg}</div>
-            <div className="mt-2 flex items-center gap-2">
+            <div className="mt-2 flex flex-wrap items-center gap-2">
               <button
                 type="button"
-                onClick={() => startScanningWithCamera(selectedCameraId || { facingMode: 'environment' })}
-                className="btn btn-xs bg-rose-600 hover:bg-rose-700 text-white flex items-center gap-1"
+                onClick={() => startCamera(selectedCameraId)}
+                className="btn btn-xs bg-rose-600 hover:bg-rose-700 text-white flex items-center gap-1 whitespace-nowrap"
               >
                 <RefreshCw size={12} />
                 <span>{t('Coba Lagi')}</span>
@@ -371,7 +355,7 @@ export default function CameraQRScanner({ onScanSuccess, mode = 'checkin', onClo
               <button
                 type="button"
                 onClick={() => fileInputRef.current?.click()}
-                className="btn btn-xs bg-slate-800 hover:bg-slate-700 text-white flex items-center gap-1"
+                className="btn btn-xs bg-slate-800 hover:bg-slate-700 text-white flex items-center gap-1 whitespace-nowrap"
               >
                 <Upload size={12} />
                 <span>{t('Unggah Foto QR')}</span>
@@ -383,7 +367,13 @@ export default function CameraQRScanner({ onScanSuccess, mode = 'checkin', onClo
 
       {/* Camera Live Viewfinder Container */}
       <div className="mt-3 relative rounded-xl overflow-hidden bg-black w-full aspect-square max-w-[340px] mx-auto">
-        <div id={scannerContainerId} className="absolute inset-0 w-full h-full" />
+        <video
+          ref={videoRef}
+          playsInline
+          muted
+          autoPlay
+          className="absolute inset-0 w-full h-full object-cover block"
+        />
 
         {/* Viewfinder Target Overlays (Red-only clean frame) */}
         {isScanning && !scannedResult && (
@@ -436,7 +426,7 @@ export default function CameraQRScanner({ onScanSuccess, mode = 'checkin', onClo
           >
             {cameras.map((c) => (
               <option key={c.id} value={c.id}>
-                {c.label || `Kamera ${c.id.substring(0, 5)}`}
+                {c.label}
               </option>
             ))}
           </select>
@@ -461,8 +451,8 @@ export default function CameraQRScanner({ onScanSuccess, mode = 'checkin', onClo
 
           <button
             type="button"
-            onClick={async () => {
-              await stopScanning();
+            onClick={() => {
+              stopCamera();
               if (onClose) onClose();
             }}
             className="btn bg-slate-800 border border-slate-700 text-slate-200 hover:bg-slate-700 hover:text-white text-xs py-2 px-3 min-h-[38px] whitespace-nowrap"
