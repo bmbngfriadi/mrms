@@ -237,12 +237,15 @@ input[type="datetime-local"] {
 
 /* QR Camera Scanner - iOS Safari Video & Red-only Target Box */
 #mrms-camera-qr-reader {
+  position: absolute !important;
+  inset: 0 !important;
   width: 100% !important;
   height: 100% !important;
-  position: relative !important;
   border: none !important;
 }
 #mrms-camera-qr-reader video {
+  position: absolute !important;
+  inset: 0 !important;
   width: 100% !important;
   height: 100% !important;
   object-fit: cover !important;

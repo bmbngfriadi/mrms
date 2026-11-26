@@ -46,10 +46,15 @@ export default function CameraQRScanner({ onScanSuccess, mode = 'checkin', onClo
         if (html5QrCodeRef.current.isScanning) {
           await html5QrCodeRef.current.stop();
         }
-        html5QrCodeRef.current.clear();
       } catch (err) {
         // ignore already stopped warnings
       } finally {
+        try {
+          if (!html5QrCodeRef.current?.isScanning) {
+            html5QrCodeRef.current?.clear();
+          }
+        } catch {}
+        html5QrCodeRef.current = null;
         isStoppingRef.current = false;
       }
     }
@@ -378,7 +383,7 @@ export default function CameraQRScanner({ onScanSuccess, mode = 'checkin', onClo
 
       {/* Camera Live Viewfinder Container */}
       <div className="mt-3 relative rounded-xl overflow-hidden bg-black w-full aspect-square max-w-[340px] mx-auto">
-        <div id={scannerContainerId} className="w-full h-full" />
+        <div id={scannerContainerId} className="absolute inset-0 w-full h-full" />
 
         {/* Viewfinder Target Overlays (Red-only clean frame) */}
         {isScanning && !scannedResult && (

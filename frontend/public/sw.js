@@ -1,7 +1,7 @@
 // Service Worker for Meeting Room Management System (MRMS)
 // PT Cemindo Gemilang Tbk - Plant Batam
 
-const CACHE_NAME = 'mrms-pwa-v7';
+const CACHE_NAME = 'mrms-pwa-v8';
 const PRECACHE_URLS = [
   '/mrms/',
   '/mrms/manifest.webmanifest',
