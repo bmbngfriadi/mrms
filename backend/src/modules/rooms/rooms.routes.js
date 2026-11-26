@@ -3,7 +3,7 @@ const router = express.Router();
 const prisma = require('../../config/database');
 const { successResponse, errorResponse } = require('../../utils/response');
 const { authenticate } = require('../../middleware/auth');
-const { requireRole } = require('../../middleware/rbac');
+const { requirePermission, requireAnyPermission } = require('../../middleware/rbac');
 const { logAudit } = require('../../utils/audit');
 const { generateSecureToken, hashToken } = require('../../utils/crypto');
 const { z } = require('zod');
@@ -208,7 +208,7 @@ router.get('/:id/availability', async (req, res, next) => {
 });
 
 // Admin: Create room
-router.post('/', requireRole(['ADMIN']), validateBody(roomSchema), async (req, res, next) => {
+router.post('/', requirePermission('menu:rooms_master'), validateBody(roomSchema), async (req, res, next) => {
   try {
     const { code, name, location, capacity, description, imageUrl, photos = [], isActive = true, facilities = [] } = req.body;
 
@@ -258,7 +258,7 @@ router.post('/', requireRole(['ADMIN']), validateBody(roomSchema), async (req, r
 });
 
 // Admin: Update room
-router.put('/:id', requireRole(['ADMIN']), validateBody(roomSchema), async (req, res, next) => {
+router.put('/:id', requirePermission('menu:rooms_master'), validateBody(roomSchema), async (req, res, next) => {
   try {
     const { id } = req.params;
     const { code, name, location, capacity, description, imageUrl, photos, isActive, facilities } = req.body;
@@ -322,7 +322,7 @@ router.put('/:id', requireRole(['ADMIN']), validateBody(roomSchema), async (req,
 });
 
 // Admin & HRGA: Delete Meeting Room (Khusus Administrasi Sistem)
-router.delete('/:id', requireRole(['ADMIN', 'HRGA']), async (req, res, next) => {
+router.delete('/:id', requirePermission('menu:rooms_master'), async (req, res, next) => {
   try {
     const { id } = req.params;
     const room = await prisma.meetingRoom.findUnique({
@@ -390,7 +390,7 @@ router.delete('/:id', requireRole(['ADMIN', 'HRGA']), async (req, res, next) => 
 });
 
 // HRGA & Admin: Manage Room Blocks / Maintenance
-router.get('/blocks/all', requireRole(['HRGA', 'ADMIN']), async (req, res, next) => {
+router.get('/blocks/all', requireAnyPermission(['menu:blocks', 'room:block_create']), async (req, res, next) => {
   try {
     const blocks = await prisma.roomBlock.findMany({
       include: {
@@ -405,7 +405,7 @@ router.get('/blocks/all', requireRole(['HRGA', 'ADMIN']), async (req, res, next)
   }
 });
 
-router.post('/blocks', requireRole(['HRGA', 'ADMIN']), validateBody(blockSchema), async (req, res, next) => {
+router.post('/blocks', requireAnyPermission(['room:block_create', 'menu:blocks']), validateBody(blockSchema), async (req, res, next) => {
   try {
     const { roomId, title, reason, blockType, startTime, endTime } = req.body;
     const start = new Date(startTime);
@@ -462,7 +462,7 @@ router.post('/blocks', requireRole(['HRGA', 'ADMIN']), validateBody(blockSchema)
   }
 });
 
-router.delete('/blocks/:id', requireRole(['HRGA', 'ADMIN']), async (req, res, next) => {
+router.delete('/blocks/:id', requireAnyPermission(['room:block_create', 'menu:blocks']), async (req, res, next) => {
   try {
     const { id } = req.params;
     const block = await prisma.roomBlock.update({

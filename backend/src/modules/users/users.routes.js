@@ -3,7 +3,7 @@ const router = express.Router();
 const prisma = require('../../config/database');
 const { successResponse, errorResponse } = require('../../utils/response');
 const { authenticate } = require('../../middleware/auth');
-const { requireRole, requirePermission } = require('../../middleware/rbac');
+const { requirePermission, requireAnyPermission } = require('../../middleware/rbac');
 const { PERMISSION_GROUPS, ROLE_DEFAULTS, ALL_PERMISSION_IDS } = require('../../config/permissions');
 const { hashPassword } = require('../../utils/passwords');
 const { logAudit } = require('../../utils/audit');
@@ -38,7 +38,7 @@ const userUpdateSchema = z.object({
 router.use(authenticate);
 
 // Admin & HRGA: Download Excel Template for Bulk Import
-router.get('/template', requireRole(['ADMIN', 'HRGA']), async (req, res, next) => {
+router.get('/template', requireAnyPermission(['menu:users', 'user:manage']), async (req, res, next) => {
   try {
     const ExcelJS = require('exceljs');
     const workbook = new ExcelJS.Workbook();
@@ -187,7 +187,7 @@ router.get('/template', requireRole(['ADMIN', 'HRGA']), async (req, res, next) =
 });
 
 // Admin only: Bulk Import Users (Overwrite Mode, Admin Protected)
-router.post('/import', requireRole(['ADMIN']), async (req, res, next) => {
+router.post('/import', requireAnyPermission(['menu:users', 'user:manage']), async (req, res, next) => {
   try {
     // 0. Ensure PostgreSQL unique constraint on NIK is dropped so batch uploads & transition NIKs succeed
     try {
@@ -666,7 +666,7 @@ router.post('/import', requireRole(['ADMIN']), async (req, res, next) => {
 });
 
 // Admin & HRGA: Get Permission Catalog & Role Defaults
-router.get('/permissions/catalog', requireRole(['ADMIN', 'HRGA']), async (req, res) => {
+router.get('/permissions/catalog', requireAnyPermission(['menu:users', 'user:manage']), async (req, res) => {
   return successResponse(
     res,
     {
@@ -679,7 +679,7 @@ router.get('/permissions/catalog', requireRole(['ADMIN', 'HRGA']), async (req, r
 });
 
 // Admin & HRGA can list users
-router.get('/', requireRole(['ADMIN', 'HRGA']), async (req, res, next) => {
+router.get('/', requireAnyPermission(['menu:users', 'user:manage']), async (req, res, next) => {
   try {
     const page = parseInt(req.query.page || '1', 10);
     const limit = parseInt(req.query.limit || '20', 10);
@@ -734,7 +734,7 @@ router.get('/', requireRole(['ADMIN', 'HRGA']), async (req, res, next) => {
 });
 
 // Admin only: Create User
-router.post('/', requireRole(['ADMIN']), validateBody(userCreateSchema), async (req, res, next) => {
+router.post('/', requireAnyPermission(['menu:users', 'user:manage']), validateBody(userCreateSchema), async (req, res, next) => {
   try {
     const { nik, username, name, email, phone, password, role, departmentId, permissions } = req.body;
     const finalUsername = (username || email.split('@')[0] || '').toLowerCase().trim();
@@ -800,7 +800,7 @@ router.post('/', requireRole(['ADMIN']), validateBody(userCreateSchema), async (
 });
 
 // Admin only: Update User Permissions Checklist
-router.put('/:id/permissions', requireRole(['ADMIN']), async (req, res, next) => {
+router.put('/:id/permissions', requireAnyPermission(['menu:users', 'user:manage']), async (req, res, next) => {
   try {
     const { id } = req.params;
     const { permissions } = req.body;
@@ -854,7 +854,7 @@ router.put('/:id/permissions', requireRole(['ADMIN']), async (req, res, next) =>
 });
 
 // Admin only: Update User
-router.put('/:id', requireRole(['ADMIN']), validateBody(userUpdateSchema), async (req, res, next) => {
+router.put('/:id', requireAnyPermission(['menu:users', 'user:manage']), validateBody(userUpdateSchema), async (req, res, next) => {
   try {
     const { id } = req.params;
     const { nik, username, name, email, phone, password, role, departmentId, isActive, permissions } = req.body;
@@ -908,7 +908,7 @@ router.put('/:id', requireRole(['ADMIN']), validateBody(userUpdateSchema), async
 });
 
 // Admin: Toggle active status
-router.patch('/:id/status', requireRole(['ADMIN']), async (req, res, next) => {
+router.patch('/:id/status', requireAnyPermission(['menu:users', 'user:manage']), async (req, res, next) => {
   try {
     const { id } = req.params;
     const { isActive } = req.body;
@@ -939,7 +939,7 @@ router.patch('/:id/status', requireRole(['ADMIN']), async (req, res, next) => {
 });
 
 // Admin only: Delete User
-router.delete('/:id', requireRole(['ADMIN']), async (req, res, next) => {
+router.delete('/:id', requireAnyPermission(['menu:users', 'user:manage']), async (req, res, next) => {
   try {
     const { id } = req.params;
 

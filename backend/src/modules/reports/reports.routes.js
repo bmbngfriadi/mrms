@@ -6,11 +6,11 @@ const { stringify } = require('csv-stringify/sync');
 const { formatWIB } = require('../../utils/timezone');
 const { successResponse, errorResponse } = require('../../utils/response');
 const { authenticate } = require('../../middleware/auth');
-const { requireRole } = require('../../middleware/rbac');
+const { requirePermission } = require('../../middleware/rbac');
 const { getSystemSettings } = require('../../config/system-settings');
 
 router.use(authenticate);
-router.use(requireRole(['HRGA', 'ADMIN']));
+router.use(requirePermission('menu:reports'));
 
 // 1. Room Usage Summary & Detailed Table
 router.get('/room-usage', async (req, res, next) => {

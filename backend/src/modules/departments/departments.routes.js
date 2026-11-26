@@ -3,7 +3,7 @@ const router = express.Router();
 const prisma = require('../../config/database');
 const { successResponse, errorResponse } = require('../../utils/response');
 const { authenticate } = require('../../middleware/auth');
-const { requireRole } = require('../../middleware/rbac');
+const { requirePermission } = require('../../middleware/rbac');
 const { logAudit } = require('../../utils/audit');
 const { z } = require('zod');
 const { validateBody } = require('../../middleware/validate');
@@ -32,7 +32,7 @@ router.get('/', async (req, res, next) => {
 });
 
 // Admin only CRUD
-router.post('/', requireRole(['ADMIN']), validateBody(deptSchema), async (req, res, next) => {
+router.post('/', requirePermission('menu:departments'), validateBody(deptSchema), async (req, res, next) => {
   try {
     const { code, name, isActive = true } = req.body;
     const dept = await prisma.department.create({
@@ -52,7 +52,7 @@ router.post('/', requireRole(['ADMIN']), validateBody(deptSchema), async (req, r
   }
 });
 
-router.put('/:id', requireRole(['ADMIN']), validateBody(deptSchema), async (req, res, next) => {
+router.put('/:id', requirePermission('menu:departments'), validateBody(deptSchema), async (req, res, next) => {
   try {
     const { id } = req.params;
     const { code, name, isActive } = req.body;
@@ -79,7 +79,7 @@ router.put('/:id', requireRole(['ADMIN']), validateBody(deptSchema), async (req,
   }
 });
 
-router.delete('/:id', requireRole(['ADMIN']), async (req, res, next) => {
+router.delete('/:id', requirePermission('menu:departments'), async (req, res, next) => {
   try {
     const { id } = req.params;
     const userCount = await prisma.user.count({ where: { departmentId: id } });

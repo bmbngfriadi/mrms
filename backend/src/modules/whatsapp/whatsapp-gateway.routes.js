@@ -3,7 +3,7 @@ const router = express.Router();
 const controller = require('./whatsapp-gateway.controller');
 const whatsappGateway = require('./whatsapp-gateway.service');
 const { authenticate } = require('../../middleware/auth');
-const { requireRole } = require('../../middleware/rbac');
+const { requirePermission } = require('../../middleware/rbac');
 const { successResponse, errorResponse } = require('../../utils/response');
 const env = require('../../config/env');
 
@@ -28,9 +28,9 @@ router.post('/internal-send', async (req, res) => {
   }
 });
 
-// All user-facing endpoints require ADMIN access (System Administration)
+// All user-facing endpoints require menu:whatsapp permission
 router.use(authenticate);
-router.use(requireRole(['ADMIN']));
+router.use(requirePermission('menu:whatsapp'));
 
 router.get('/status', (req, res, next) => controller.getStatus(req, res, next));
 router.post('/connect', (req, res, next) => controller.connect(req, res, next));

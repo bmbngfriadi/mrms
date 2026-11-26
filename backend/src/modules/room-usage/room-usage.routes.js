@@ -2,7 +2,7 @@ const express = require('express');
 const router = express.Router();
 const controller = require('./room-usage.controller');
 const { authenticate } = require('../../middleware/auth');
-const { requireRole } = require('../../middleware/rbac');
+const { requirePermission, requireAnyPermission } = require('../../middleware/rbac');
 const { z } = require('zod');
 const { validateBody } = require('../../middleware/validate');
 
@@ -29,10 +29,10 @@ router.post('/checkin', validateBody(checkinSchema), controller.handleCheckin);
 router.post('/checkout/preview', validateBody(checkoutSchema), controller.handleCheckoutPreview);
 router.post('/checkout', validateBody(checkoutSchema), controller.handleCheckout);
 
-// HRGA & Admin only
-router.post('/manual-checkout', requireRole(['HRGA', 'ADMIN']), validateBody(manualCheckoutSchema), controller.handleManualCheckout);
-router.get('/active', requireRole(['HRGA', 'ADMIN']), controller.getActiveSessions);
-router.get('/overdue', requireRole(['HRGA', 'ADMIN']), controller.getOverdueSessions);
+// HRGA / Admin / Permitted users via checklist
+router.post('/manual-checkout', requireAnyPermission(['room:force_checkout', 'menu:overdue', 'menu:live_monitoring']), validateBody(manualCheckoutSchema), controller.handleManualCheckout);
+router.get('/active', requireAnyPermission(['menu:live_monitoring', 'menu:overdue']), controller.getActiveSessions);
+router.get('/overdue', requireAnyPermission(['menu:overdue', 'room:force_checkout']), controller.getOverdueSessions);
 
 module.exports = router;
 

@@ -3,10 +3,10 @@ const router = express.Router();
 const prisma = require('../../config/database');
 const { successResponse } = require('../../utils/response');
 const { authenticate } = require('../../middleware/auth');
-const { requireRole } = require('../../middleware/rbac');
+const { requirePermission } = require('../../middleware/rbac');
 
 router.use(authenticate);
-router.use(requireRole(['ADMIN', 'HRGA']));
+router.use(requirePermission('menu:audit_logs'));
 
 router.get('/', async (req, res, next) => {
   try {

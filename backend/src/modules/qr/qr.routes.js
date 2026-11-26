@@ -5,7 +5,7 @@ const QRCode = require('qrcode');
 const { hashToken, generateSecureToken } = require('../../utils/crypto');
 const { successResponse, errorResponse } = require('../../utils/response');
 const { authenticate } = require('../../middleware/auth');
-const { requireRole } = require('../../middleware/rbac');
+const { requirePermission } = require('../../middleware/rbac');
 const { logAudit } = require('../../utils/audit');
 const env = require('../../config/env');
 
@@ -66,7 +66,7 @@ router.post('/validate', async (req, res, next) => {
 });
 
 // Admin only: Rotate QR tokens
-router.post('/rooms/:roomId/rotate', authenticate, requireRole(['ADMIN']), async (req, res, next) => {
+router.post('/rooms/:roomId/rotate', authenticate, requirePermission('menu:qr_management'), async (req, res, next) => {
   try {
     const { roomId } = req.params;
     const room = await prisma.meetingRoom.findUnique({ where: { id: roomId } });
@@ -105,7 +105,7 @@ router.post('/rooms/:roomId/rotate', authenticate, requireRole(['ADMIN']), async
 });
 
 // Admin: Get printable QR codes with QR images
-router.get('/print-sheets', authenticate, requireRole(['ADMIN']), async (req, res, next) => {
+router.get('/print-sheets', authenticate, requirePermission('menu:qr_management'), async (req, res, next) => {
   try {
     const rooms = await prisma.meetingRoom.findMany({
       where: { isActive: true },

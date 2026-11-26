@@ -38,9 +38,29 @@ function requirePermission(permissionId) {
   };
 }
 
+function requireAnyPermission(permissionIds = []) {
+  return (req, res, next) => {
+    if (!req.user) {
+      return errorResponse(res, 'Otentikasi diperlukan.', 401);
+    }
+
+    const allowed = permissionIds.some((pid) => checkPermission(req.user, pid));
+    if (!allowed) {
+      return errorResponse(
+        res,
+        `Akses ditolak. Anda tidak memiliki izin (${permissionIds.join(' / ')}) untuk melakukan tindakan ini. Hubungi Administrator untuk memperbarui checklist hak akses Anda.`,
+        403
+      );
+    }
+
+    next();
+  };
+}
+
 module.exports = {
   requireRole,
   requirePermission,
+  requireAnyPermission,
   hasPermission: checkPermission,
   resolveUserPermissions,
 };

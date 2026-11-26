@@ -65,7 +65,8 @@ const processImageFile = (file) => {
 
 export default function AdminRooms() {
   const { t } = useI18n();
-  const { isAdmin } = useAuth();
+  const { isAdmin, hasPermission } = useAuth();
+  const canManageRooms = isAdmin || hasPermission('menu:rooms_master');
   const { showConfirm, showAlert } = useModal();
   const [rooms, setRooms] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -381,7 +382,7 @@ export default function AdminRooms() {
                   <Edit2 size={13} />
                   <span>{t('Ubah')} {t('Ruangan & Foto')}</span>
                 </button>
-                {isAdmin && (
+                {canManageRooms && (
                   <button
                     onClick={() => handleDeleteRoom(r)}
                     className="btn btn-ghost text-rose-600 hover:text-rose-700 hover:bg-rose-50 dark:hover:bg-rose-950/40 text-xs py-2 px-3 flex items-center justify-center gap-1.5 cursor-pointer border border-transparent hover:border-rose-200 dark:hover:border-rose-900 rounded-xl transition"
@@ -597,7 +598,7 @@ export default function AdminRooms() {
 
               <div className="pt-3 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between gap-2">
                 <div>
-                  {editId && isAdmin && (
+                  {editId && canManageRooms && (
                     <button
                       type="button"
                       onClick={() => {

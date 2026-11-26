@@ -4,7 +4,7 @@ const prisma = require('../../config/database');
 const { getSystemSettings } = require('../../config/system-settings');
 const { successResponse, errorResponse } = require('../../utils/response');
 const { authenticate } = require('../../middleware/auth');
-const { requireRole } = require('../../middleware/rbac');
+const { requireAnyPermission } = require('../../middleware/rbac');
 const { logAudit } = require('../../utils/audit');
 
 // Authenticated users can view settings (e.g. for calendar/booking constraints)
@@ -20,7 +20,7 @@ router.get('/', authenticate, async (req, res, next) => {
 });
 
 // Admin only: Update system setting
-router.put('/', authenticate, requireRole(['ADMIN']), async (req, res, next) => {
+router.put('/', authenticate, requireAnyPermission(['system:settings_edit', 'menu:settings']), async (req, res, next) => {
   try {
     const { settings } = req.body; // array of { key, value }
     if (!Array.isArray(settings)) {
