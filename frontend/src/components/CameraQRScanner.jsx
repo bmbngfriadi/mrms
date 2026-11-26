@@ -58,18 +58,44 @@ export default function CameraQRScanner({ onScanSuccess, mode = 'checkin', onClo
     }
   };
 
+  const pickBestRearCamera = (devices) => {
+    if (!devices || devices.length === 0) return null;
+    // 1. Prefer standard Back Camera (avoid iOS "Back Triple/Dual/Ultra/Telephoto Camera" which often renders black on Safari)
+    const standardBack = devices.find((c) => {
+      const lbl = (c.label || '').toLowerCase();
+      const isRear = lbl.includes('back') || lbl.includes('rear') || lbl.includes('environment');
+      const isMultiOrSpecial =
+        lbl.includes('triple') ||
+        lbl.includes('dual') ||
+        lbl.includes('ultra') ||
+        lbl.includes('telephoto') ||
+        lbl.includes('macro');
+      return isRear && !isMultiOrSpecial;
+    });
+    if (standardBack) return standardBack;
+
+    // 2. Fallback to any rear camera excluding triple
+    const nonTripleBack = devices.find((c) => {
+      const lbl = (c.label || '').toLowerCase();
+      return (lbl.includes('back') || lbl.includes('rear') || lbl.includes('environment')) && !lbl.includes('triple');
+    });
+    if (nonTripleBack) return nonTripleBack;
+
+    // 3. Fallback to any rear camera or first device
+    const anyBack = devices.find((c) => {
+      const lbl = (c.label || '').toLowerCase();
+      return lbl.includes('back') || lbl.includes('rear') || lbl.includes('environment');
+    });
+    return anyBack || devices[0];
+  };
+
   const enumerateCamerasSafely = async () => {
     try {
       const devices = await Html5Qrcode.getCameras();
       if (isMountedRef.current && devices && devices.length > 0) {
         setCameras(devices);
-        const backCam = devices.find(
-          (c) =>
-            c.label.toLowerCase().includes('back') ||
-            c.label.toLowerCase().includes('rear') ||
-            c.label.toLowerCase().includes('environment')
-        );
-        setSelectedCameraId((prev) => prev || (backCam ? backCam.id : devices[0].id));
+        const bestCam = pickBestRearCamera(devices);
+        setSelectedCameraId((prev) => prev || (bestCam ? bestCam.id : devices[0].id));
       }
       return devices || [];
     } catch {
@@ -132,6 +158,7 @@ export default function CameraQRScanner({ onScanSuccess, mode = 'checkin', onClo
       );
 
       // iOS Safari / iPhone PWA safeguard: explicitly ensure playsInline, muted, autoplay & play()
+      let activeTrackLabel = '';
       try {
         const container = document.getElementById(scannerContainerId);
         const videoEl = container?.querySelector('video');
@@ -145,14 +172,27 @@ export default function CameraQRScanner({ onScanSuccess, mode = 'checkin', onClo
           if (videoEl.paused) {
             videoEl.play().catch(() => {});
           }
+          activeTrackLabel = videoEl.srcObject?.getVideoTracks?.()[0]?.label || '';
         }
       } catch {}
 
       if (isMountedRef.current) {
         setIsScanning(true);
-        // Enumerate cameras ONLY after stream is open to avoid hardware lock contention
-        if (cameras.length === 0) {
-          enumerateCamerasSafely();
+        const devices = cameras.length === 0 ? await enumerateCamerasSafely() : cameras;
+
+        // If started with facingMode and iOS picked "Back Triple Camera", auto-switch to standard "Back Camera"
+        if (
+          !isRetry &&
+          typeof cameraParam === 'object' &&
+          /triple|dual|ultra/i.test(activeTrackLabel) &&
+          devices.length > 1
+        ) {
+          const bestCam = pickBestRearCamera(devices);
+          if (bestCam && !/triple/i.test(bestCam.label || '')) {
+            setSelectedCameraId(bestCam.id);
+            isStartingRef.current = false;
+            return startScanningWithCamera(bestCam.id, true);
+          }
         }
       }
     } catch (err) {
@@ -171,8 +211,7 @@ export default function CameraQRScanner({ onScanSuccess, mode = 'checkin', onClo
         await new Promise((r) => setTimeout(r, 400));
         const devices = await enumerateCamerasSafely();
         if (devices.length > 0 && isMountedRef.current) {
-          const fallbackCam =
-            devices.find((c) => /back|rear|environment/i.test(c.label)) || devices[0];
+          const fallbackCam = pickBestRearCamera(devices);
           setSelectedCameraId(fallbackCam.id);
           return startScanningWithCamera(fallbackCam.id, true);
         }
@@ -229,8 +268,30 @@ export default function CameraQRScanner({ onScanSuccess, mode = 'checkin', onClo
       observer.observe(container, { childList: true, subtree: true });
     }
 
-    // Start immediately on mount (critical for iOS Safari user-gesture video activation)
-    startScanningWithCamera({ facingMode: 'environment' });
+    // Check if browser already has camera labels cached (permission previously granted) to pick standard Back Camera directly
+    (async () => {
+      try {
+        if (navigator.mediaDevices?.enumerateDevices) {
+          const allDevs = await navigator.mediaDevices.enumerateDevices();
+          const videoDevs = allDevs
+            .filter((d) => d.kind === 'videoinput' && d.label)
+            .map((d) => ({ id: d.deviceId, label: d.label }));
+          if (videoDevs.length > 0 && isMountedRef.current) {
+            setCameras(videoDevs);
+            const best = pickBestRearCamera(videoDevs);
+            if (best) {
+              setSelectedCameraId(best.id);
+              startScanningWithCamera(best.id);
+              return;
+            }
+          }
+        }
+      } catch {}
+
+      if (isMountedRef.current) {
+        startScanningWithCamera({ facingMode: 'environment' });
+      }
+    })();
 
     return () => {
       isMountedRef.current = false;
